@@ -83,7 +83,7 @@
 (defun igo-sgf-match-char (strm ch)
   (let ((strm-ch (igo-sgf-scan strm)))
     (if (not (equal strm-ch ch))
-        (igo-sgf-error strm (format "Unexpected '%s' (expecting '%c')" (if strm-ch (char-to-string strm-ch) "EndOfStream") ch))
+        (igo-sgf-error strm (format "Unexpected %s (expecting '%c')" (if strm-ch (concat "'" (char-to-string strm-ch) "'") "end of SGF") ch))
       (igo-sgf-discard strm))))
 
 (defun igo-sgf-scan-ucletters (strm)
@@ -229,7 +229,7 @@
     (while (not (equal (setq ch (igo-sgf-get strm)) ?\]))
       ;; end of strm
       (if (null ch)
-          (igo-sgf-error strm "Unexpected termination in Property Value"))
+          (igo-sgf-error strm "Unexpected end of SGF in Property Value"))
       ;; push ch
       (push ch chars)
       ;; NOTE: Do not resolve compose value here(colon separation). Depends on property type.
@@ -252,12 +252,19 @@
     (setq end-pos (igo-sgf-strm-pos strm))
 
     ;; return value
-    (vector leading-wss begin-pos (concat (nreverse chars)) end-pos)))
+    (igo-sgf-make-prop-value leading-wss begin-pos (concat (nreverse chars)) end-pos)))
 
 
 ;;
 ;; Syntax Tree Accessors
 ;;
+
+(defun igo-sgf-format-location (begin end)
+  (cond
+   ((and begin end) (format "%s-%s: " begin end))
+   (begin (format "%s: " begin))
+   (end (format "%s: " end))
+   (t "")))
 
 ;; Tree
 (defun igo-sgf-tree-leading-white-spaces (tree) (aref tree 0))
@@ -273,9 +280,12 @@
 
 (defun igo-sgf-tree-get-board-size (tree)
   (let* ((root-node (car (igo-sgf-tree-nodes tree)))
-         (sz (igo-sgf-split-compose (igo-sgf-node-get-property-value root-node "SZ" "19")))
-         (w (string-to-number (if (stringp sz) sz (car sz))))
-         (h (string-to-number (if (stringp sz) sz (cdr sz)))))
+         (sz-value (igo-sgf-node-get-property-value root-node "SZ" "19"))
+         (sz (igo-sgf-split-compose sz-value))
+         (w (string-to-number (igo-sgf-prop-value-content (if (consp sz) (car sz) sz))))
+         (h (string-to-number (igo-sgf-prop-value-content (if (consp sz) (cdr sz) sz)))))
+    (if (not (and (>= w 1) (<= w 52) (>= h 1) (<= h 52)))
+        (error "%sInvalid board size(w=%s h=%s)." (igo-sgf-prop-value-location-string sz-value) w h))
     (cons w h)))
 
 ;; Node
@@ -289,13 +299,14 @@
 (defun igo-sgf-node-get-property-value (node id &optional default)
   (let* ((property (igo-sgf-node-get-property node id)))
     (if (null property)
-        default
+        (igo-sgf-make-prop-value "" nil default nil)
+      (igo-sgf-property-ensure-one-value property)
       (let* ((values (igo-sgf-property-values property)))
-        (igo-sgf-prop-value-content (car values))))))
+        (car values)))))
 (defun igo-sgf-node-location-string (node)
-  (format "%s-%s"
-          (igo-sgf-node-begin node)
-          (igo-sgf-node-end node)))
+  (igo-sgf-format-location
+   (igo-sgf-node-begin node)
+   (igo-sgf-node-end node)))
 
 ;; Property
 (defun igo-sgf-property-leading-white-spaces (prop) (aref prop 0))
@@ -304,31 +315,44 @@
 (defun igo-sgf-property-values (prop) (aref prop 3))
 (defun igo-sgf-property-end (prop) (aref prop 4))
 (defun igo-sgf-property-location-string (prop)
-  (format "%s-%s"
-          (igo-sgf-property-begin prop)
-          (igo-sgf-property-end prop)))
+  (igo-sgf-format-location
+   (igo-sgf-property-begin prop)
+   (igo-sgf-property-end prop)))
+
+(defun igo-sgf-property-ensure-one-value (prop)
+  (if (/= (length (igo-sgf-property-values prop)) 1)
+      (error "%sProperty %s has only one value."
+             (igo-sgf-property-location-string prop)
+             (igo-sgf-property-id prop))))
 
 ;; Value
+(defun igo-sgf-make-prop-value (leading-wss begin-pos value-str end-pos)
+  (vector leading-wss begin-pos value-str end-pos))
 (defun igo-sgf-prop-value-leading-white-spaces (prop-value) (aref prop-value 0))
 (defun igo-sgf-prop-value-begin (prop-value) (aref prop-value 1))
 (defun igo-sgf-prop-value-content (prop-value) (aref prop-value 2))
 (defun igo-sgf-prop-value-end (prop-value) (aref prop-value 3))
 (defun igo-sgf-prop-value-location-string (prop-value)
-  (format "%s-%s"
-          (igo-sgf-prop-value-begin prop-value)
-          (igo-sgf-prop-value-end prop-value)))
+  (igo-sgf-format-location
+   (igo-sgf-prop-value-begin prop-value)
+   (igo-sgf-prop-value-end prop-value)))
 
 (defun igo-sgf-split-compose (value)
   "Split string VALUE with a colon.
 
-\"ABCD\" => \"ABCD\"
-\"AB:CD\" => (\"AB\" . \"CD\")
-\"AB\\:):CD\" => (\"AB:)\" . \"CD\")
-\"AB:CD:EF\" => error
+(pv \"ABCD\") => (pv \"ABCD\")
+(pv \"AB:CD\") => ((pv \"AB\") . (pv \"CD\"))
+(pv \"AB\\:):CD\") => ((pv \"AB:)\") . (pv \"CD\"))
+(pv \"AB:CD:EF\") => error
+
+NOTE: (pv str)=(igo-sgf-make-prop-value "" nil str nil)
 "
-  (let (colon-pos (i 0) (value-length (length value)))
+  (let* ((value-str (igo-sgf-prop-value-content value))
+         (value-length (length value-str))
+         colon-pos
+         (i 0))
     (while (< i value-length)
-      (let ((ch (elt value i)))
+      (let ((ch (elt value-str i)))
         (cond
          ;; skip next escaped char
          ((= ch ?\\)
@@ -336,13 +360,24 @@
          ;; colon
          ((= ch ?:)
           (if colon-pos
-              (error "Too many colons in compose value : %s" value))
+              (error "%sToo many colons in compose value : %s"
+                     (igo-sgf-prop-value-location-string value)
+                     value-str))
           (setq colon-pos i)))
         (setq i (1+ i))))
     (if (null colon-pos)
         value
-      (cons (substring value 0 colon-pos)
-            (substring value (1+ colon-pos))))))
+      (let ((value-begin (igo-sgf-prop-value-begin value)))
+        (cons (igo-sgf-make-prop-value
+               (igo-sgf-prop-value-leading-white-spaces value)
+               value-begin
+               (substring value-str 0 colon-pos)
+               (if (integerp value-begin) (+ value-begin colon-pos)))
+              (igo-sgf-make-prop-value
+               ""
+               (if (integerp value-begin) (+ value-begin colon-pos 1))
+               (substring value-str (1+ colon-pos))
+               (igo-sgf-prop-value-end value)) )))))
 
 (defun igo-sgf-value-as-text (value)
   (if (vectorp value) (setq value (igo-sgf-prop-value-content value)))
@@ -369,33 +404,34 @@
     (cond
      ((string= value-str "B") 'black)
      ((string= value-str "W") 'white)
-     (t (error "%s: Not a color '%s'"
+     (t (error "%sNot a color '%s'"
                (igo-sgf-prop-value-location-string value)
                value-str)))))
 
-(defun igo-sgf-point-letter-to-number (ch)
+(defun igo-sgf-point-letter-to-number (ch pos)
   "Convert a point type(same as move type) letter to an integer.
 
 ?a-?z ?A-?Z to 0-25 26-51"
   (cond
    ((and (>= ch ?a) (<= ch ?z)) (- ch ?a))
    ((and (>= ch ?A) (<= ch ?Z)) (+ (- ch ?A) 26))
-   (t (error "Invalid point letter '%c'" ch))))
+   (t (error "%s: Invalid point letter '%c'" pos ch))))
 
 (defun igo-sgf-value-as-point-xy (value &optional w h)
   "Convert point type(same as move type) value to (x . y).
 
-ex: (igo-sgf-value-as-point-xy \"da\") => (3 . 0)"
-  (if (vectorp value) (setq value (igo-sgf-prop-value-content value)))
-  (let ((x (igo-sgf-point-letter-to-number (elt value 0)))
-        (y (igo-sgf-point-letter-to-number (elt value 1))))
-    (if (not (and (>= x 0) (>= y 0) (or (null w) (< x w)) (or (null h) (< y h))))
-        (error "Out of board x=%s y=%s" x y))
-    (cons x y)))
+ex: (igo-sgf-value-as-point-xy (igo-sgf-make-prop-value "" nil \"da\" nil)) => (3 . 0)"
+  (let ((value-str (igo-sgf-prop-value-content value)))
+    (if (/= (length value-str) 2)
+        (error "%sPoint value is not two letters." (igo-sgf-prop-value-location-string value)))
+    (let ((x (igo-sgf-point-letter-to-number (elt value-str 0) (+ (igo-sgf-prop-value-begin value) 1)))
+          (y (igo-sgf-point-letter-to-number (elt value-str 1) (+ (igo-sgf-prop-value-begin value) 2))))
+      (if (not (and (>= x 0) (>= y 0) (or (null w) (< x w)) (or (null h) (< y h))))
+          (error "%sPoint value %s is out of board (x=%s y=%s)" (igo-sgf-prop-value-location-string value) value-str x y))
+      (cons x y))))
 
 (defun igo-sgf-value-as-point-pos (value w h)
   (let ((xy (igo-sgf-value-as-point-xy value w h)))
-    ;;@todo number type check
     (igo-xy-to-pos (car xy) (cdr xy) w)))
 
 (defun igo-sgf-value-as-move (value w h)
@@ -403,7 +439,7 @@ ex: (igo-sgf-value-as-point-xy \"da\") => (3 . 0)"
 
     (cond
      ((null value-str)
-      (error "%s: No property value for move"
+      (error "%sNo property value for move"
              (igo-sgf-prop-value-location-string value)))
      ((or (string= value-str "") (and (= w 19)
                                       (= h 19)
@@ -415,13 +451,13 @@ ex: (igo-sgf-value-as-point-xy \"da\") => (3 . 0)"
 (defun igo-sgf-expand-compressed-point (value &optional w h)
   "https://www.red-bean.com/sgf/sgf4.html#3.5.1
 ex:
-(igo-sgf-expand-compressed-point \"jk\") ((9 . 10))
-(igo-sgf-expand-compressed-point \"jk:lm\") => ((9 . 10) (10 . 10) (11 . 10) (9 . 11) (10 . 11) (11 . 11) (9 . 12) (10 . 12) (11 . 12))
+(igo-sgf-expand-compressed-point (igo-sgf-make-prop-value "" nil \"jk\" nil)) => ((9 . 10))
+(igo-sgf-expand-compressed-point (igo-sgf-make-prop-value "" nil \"jk:lm\" nil) => ((9 . 10) (10 . 10) (11 . 10) (9 . 11) (10 . 11) (11 . 11) (9 . 12) (10 . 12) (11 . 12))
 "
-  (if (vectorp value) (setq value (igo-sgf-prop-value-content value)))
+  ;;(if (vectorp value) (setq value (igo-sgf-prop-value-content value)))
 
   (let ((values (igo-sgf-split-compose value)))
-    (if (stringp values)
+    (if (vectorp values)
         ;; not composed
         (list (igo-sgf-value-as-point-xy values w h))
       ;; composed (rectangle)
@@ -434,7 +470,7 @@ ex:
         (nreverse points)))))
 
 (defun igo-sgf-values-as-point-pos-list (values w h)
-  "ex: (igo-sgf-values-as-point-pos-list '(\"aa\" \"ba\" \"ab\" \"ca:da\") 9 9) => (0 1 9 2 3)"
+  "ex: (igo-sgf-values-as-point-pos-list (mapcar (lambda (v) (igo-sgf-make-prop-value \"\" nil v nil)) '(\"aa\" \"ba\" \"ab\" \"ca:da\")) 9 9) => (0 1 9 2 3)"
   (loop for value in values nconc
         ;; convert (x . y) to pos
         (seq-map
@@ -450,9 +486,6 @@ ex:
   (let* ((size (igo-sgf-tree-get-board-size sgf-root-tree))
          (w (car size))
          (h (cdr size)))
-
-    ;;@todo error invalid w, h (integer, >=0, <=52)
-
     (igo-sgf-tree-to-game-tree sgf-root-tree w h 0 'black nil)))
 
 (defun igo-sgf-tree-to-game-tree (sgf-tree w h move-number turn prev-node)
@@ -473,15 +506,15 @@ ex:
                ;; Move
                ((or (string= prop-id "B") (string= prop-id "W"))
                 (if moved
-                    (error "%s: Only one move in one node"
+                    (error "%sOnly one move in one node"
                            (igo-sgf-property-location-string sgf-prop)))
                 (if (not (string= (if (igo-black-p turn) "B" "W") prop-id))
-                    (error "%s: Turn mismatch"
+                    (error "%sTurn mismatch"
                            (igo-sgf-property-location-string sgf-prop)))
-                ;;@todo check (length prop-values) == 1
+                (igo-sgf-property-ensure-one-value sgf-prop)
                 (let ((move (igo-sgf-value-as-move (car prop-values) w h)))
                   (if (and prev-node (igo-node-find-next-by-move prev-node move))
-                      (error "%s: Move %s already exists"
+                      (error "%sMove %s already exists"
                              (igo-sgf-property-location-string sgf-prop)
                              (igo-sgf-prop-value-content (car prop-values))))
                   (igo-node-set-move curr-node move))
@@ -508,7 +541,7 @@ ex:
           ;; Record setup property
           (when (or setup-black setup-white setup-empty setup-turn)
             (if moved
-                (error "%s: Setup properties and move properties cannot be mixed in same node"
+                (error "%sSetup properties and move properties cannot be mixed in same node"
                        (igo-sgf-node-location-string sgf-node) ))
             (igo-node-set-setup-property curr-node (igo-board-changes setup-black setup-white setup-empty nil setup-turn nil nil))
             (if setup-turn (setq turn setup-turn)) )
