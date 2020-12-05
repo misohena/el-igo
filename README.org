@@ -1,0 +1,91 @@
+#+TITLE: el-igo - Emacs Go Game(SGF) Editor
+#+OPTIONS: toc:nil num:nil ^:nil
+
+Emacs内で囲碁の盤面を表示し、棋譜(SGF形式)を編集します。
+
+[[file:./screenshot/igo-org.gif]]
+
+* 動作環境
+Emacs 27.1
+
+* org-mode文書内に棋譜を埋め込む(igo-org.el)
+** 設定
+init.elに次のコードを追加してください。
+
+#+begin_src emacs-lisp
+(with-eval-after-load "org"
+  (require 'igo-org)
+  (igo-org-setup))
+#+end_src
+
+** 使い方
+org文書内にigo特殊ブロックを挿入します。(操作例: C-c C-, SPC i g o RET)
+
+#+begin_src org
+,#+begin_igo
+,#+end_igo
+#+end_src
+
+ブロックの中に (;SZ[9]) と入力すると9路盤が表示されます。またはブロック内で C-c i を押すと盤面サイズを指定して初期化できるようになっています。
+
+後は適当に石を置いたり、フリー編集モードで初期盤面を設定したり(現在はルートノードのみ編集可能)、コメントを設定したりすると、その操作毎にバッファのテキストが書き換わります。
+
+** HTMLでのエクスポート
+
+特殊ブロックなのでHTMLエスクポート時には<div class="igo"><p>～</p></div>で囲まれたSGFテキストが出力されます。
+
+盤面の形で表示させたい場合は、ページ読み込み完了時にJavaScriptで一括変換するのが簡単でしょう。
+
+例えば拙作のJavaScript碁盤を使用するならば [[https://github.com/misohena/js_igo][misohena/js_igo: JavaScript Go Game Board]] より igo.js, igo_view.js, igo.css をダウンロードした上で、次のようにします。
+
+#+begin_src org
+,#+HTML_HEAD: <script src="igo.js"></script>
+,#+HTML_HEAD: <script src="igo_view.js"></script>
+,#+HTML_HEAD: <link rel="stylesheet" href="igo.css" />
+,#+HTML_HEAD: <script>window.addEventListener("load", ev=>{ for(elem of document.querySelectorAll("div.igo")){ let sgf = elem.textContent; while(elem.hasChildNodes()){elem.removeChild(elem.firstChild);} new igo.GameView(elem, sgf, {"showBranchText": true, "showLastMoveMark": true, "showComment": true, "path":1000}); }});</script>
+
+お互いに二連星したところ。
+
+,#+begin_igo
+(;FF[4]GM[1]SZ[9];B[fd];W[df];B[ff];W[dd])
+,#+end_igo
+#+end_src
+
+特殊ブロックの出力自体を変える方法もあります。ox-html.elのorg-html-special-block関数にadviceを仕込むか、htmlエクスポータから派生した独自のエクスポータを作るかになると思います。
+
+* SGFファイルの編集(igo-sgf-mode.el)
+** 設定
+init.elに次のコードを追加してください。
+
+#+begin_src emacs-lisp
+(autoload 'igo-sgf-mode "igo-sgf-mode")
+(add-to-list 'auto-mode-alist '("\\.sgf$" . igo-sgf-mode))
+#+end_src
+
+sgfファイルを開くと自動的に盤面が表示されます。
+
+注意: sgfファイルはオセロ、チェス、バックギャモンなど囲碁以外のゲームの棋譜も表現できます。あなたがそれらを扱う場合は、GMプロパティが1以外のときにigo-sgf-modeを起動しないようにする必要があります(未実装)。
+
+* バッファ内の任意の部分を盤面にする(igo-editor.el)
+
+任意のSGFテキストをリージョンで囲った上で M-x igo-edit-region を実行すると、その範囲がエディタ化されます。
+
+igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されています。igo-sgf-mode.elはバッファ全体を、igo-org.elはbegin_igo～end_igoの間を自動的にエディタ化します。
+
+* エディタの使い方
+
+エディタは大きく分けて次のようなモードを持っています。
+
+- テキストモード
+  - 固定モード(エラーが無くなってもテキストのまま)
+  - 自動回復モード(エラーが無くなったときに自動的にグラフィカルモードに移行する)
+- グラフィカルモード
+  - 着手モード(Move Mode)
+  - フリー編集モード(Free Edit Mode)
+  - マーク編集モード(Mark Edit Mode)
+
+テキストモードとグラフィカルモードとの間は C-c g で行き来できます。
+
+グラフィカルモードでは「編集モード」によって盤面クリック時の動作を含めた操作体系が変わります。
+
+各モードで使えるキー操作は次の通りです。
