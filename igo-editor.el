@@ -205,6 +205,7 @@
     (define-key km "P" #'igo-editor-pass)
     (define-key km "p" #'igo-editor-put-stone)
     (define-key km [igo-editor-pass mouse-1] #'igo-editor-pass)
+    (define-key km [igo-editor-pass mouse-3] #'igo-editor-pass-click-r)
     (define-key km [igo-grid mouse-1] #'igo-editor-move-mode-board-click)
     (define-key km [igo-grid mouse-3] #'igo-editor-move-mode-board-click-r)
     km))
@@ -733,29 +734,39 @@
                (clicked-node (seq-find (lambda (nn) (= (igo-node-move nn) pos))
                                        (igo-node-next-nodes curr-node))))
           (if clicked-node
-              (igo-editor-move-mode-branch-click-r editor ev curr-node clicked-node)
+              (igo-editor-move-mode-branch-click-r editor curr-node clicked-node)
 )))))
 
-(defun igo-editor-move-mode-branch-click-r (editor ev curr-node clicked-node)
-  (let ((fun (x-popup-menu
-              last-input-event
-              `("Branch" ("Branch"
-                          ("Put Here" .
-                           ,(lambda ()
-                              (igo-game-apply-node (igo-editor-game editor) clicked-node)))
-                          ("Delete This Branch" .
-                           ,(lambda ()
-                              (igo-node-delete-next curr-node clicked-node)
-                              t))
-                          ("Change Order to Previous" .
-                           ,(lambda ()
-                              (igo-node-change-next-node-order curr-node clicked-node -1)))
-                          ("Change Order to Next" .
-                           ,(lambda ()
-                              (igo-node-change-next-node-order curr-node clicked-node 1))))))))
-    (when (and fun (funcall fun))
-      (igo-editor-update-image editor)
-      (igo-editor-update-buffer-text editor))))
+(defun igo-editor-pass-click-r ()
+  (interactive)
+  (let* ((editor (igo-editor-at))
+         (curr-node (igo-editor-current-node editor)))
+    (if curr-node
+        (igo-editor-move-mode-branch-click-r
+         editor curr-node (igo-node-find-next-by-move curr-node igo-pass)))))
+
+(defun igo-editor-move-mode-branch-click-r (editor curr-node clicked-node)
+  (if (and editor curr-node clicked-node)
+      (let ((fun (x-popup-menu
+                  last-input-event
+                  `("Branch"
+                    ("Branch"
+                     ("Put Here" .
+                      ,(lambda ()
+                         (igo-game-apply-node (igo-editor-game editor) clicked-node)))
+                     ("Delete This Branch" .
+                      ,(lambda ()
+                         (igo-node-delete-next curr-node clicked-node)
+                         t))
+                     ("Change Order to Previous" .
+                      ,(lambda ()
+                         (igo-node-change-next-node-order curr-node clicked-node -1)))
+                     ("Change Order to Next" .
+                      ,(lambda ()
+                         (igo-node-change-next-node-order curr-node clicked-node 1))))))))
+        (when (and fun (funcall fun))
+          (igo-editor-update-image editor)
+          (igo-editor-update-buffer-text editor)))))
 
 (defun igo-editor-put-stone (editor pos)
   (interactive
