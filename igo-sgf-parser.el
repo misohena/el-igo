@@ -622,9 +622,9 @@ ex:
              (setq turn change-turn))
 
            (concat
-            (mapconcat (lambda (pos) (concat "AB[" (igo-sgf-point pos w) "]")) change-black "")
-            (mapconcat (lambda (pos) (concat "AW[" (igo-sgf-point pos w) "]")) change-white "")
-            (mapconcat (lambda (pos) (concat "AE[" (igo-sgf-point pos w) "]")) change-empty "")
+            (if change-black (concat "AB" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-black "")))
+            (if change-white (concat "AW" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-white "")))
+            (if change-empty (concat "AE" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-empty "")))
             (if change-turn (concat "PL[" (igo-sgf-color change-turn) "]"))))))
 
      ;; Other SGF Properties
