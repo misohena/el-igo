@@ -380,7 +380,7 @@
                (cond
                 ((and begin end) (cons begin end))
                 (begin (cons begin (1+ begin)))
-                (t (cons (igo-editor-begin editor) (igo-editor-end editor))))
+                (t (cons 0 (- (igo-editor-end editor) (igo-editor-begin editor)))))
                msg))))))
 
 (defun igo-editor-last-error-begin (editor)
