@@ -644,6 +644,12 @@
                     (igo-editor-show-comment editor))
                 (message "Out of range.")))))))))
 
+;; Editor - Modified
+
+(defun igo-editor-update-on-modified (editor)
+  (igo-editor-update-image editor)
+  (igo-editor-update-buffer-text editor))
+
 ;; Editor - Editing Mode
 
 (defconst igo-editor-mode-idx-start 0)
@@ -765,8 +771,7 @@
                       ,(lambda ()
                          (igo-node-change-next-node-order curr-node clicked-node 1))))))))
         (when (and fun (funcall fun))
-          (igo-editor-update-image editor)
-          (igo-editor-update-buffer-text editor)))))
+          (igo-editor-update-on-modified editor)))))
 
 (defun igo-editor-put-stone (editor pos)
   (interactive
@@ -822,8 +827,7 @@
                          (1+ (igo-board-pos-to-x (igo-game-board game) pos))
                          (1+ (igo-board-pos-to-y (igo-game-board game) pos))))
             ;;(igo-svg-stone svg x y 'black)
-            (igo-editor-update-image editor)
-            (igo-editor-update-buffer-text editor))
+            (igo-editor-update-on-modified editor))
         (message "Ilegal move."))
       )))
 
@@ -838,8 +842,7 @@
             (message "Pass")
             (igo-editor-show-comment editor)
             ;;(igo-svg-stone svg x y 'black)
-            (igo-editor-update-image editor)
-            (igo-editor-update-buffer-text editor))
+            (igo-editor-update-on-modified editor))
         (message "ilegal move."))
       )))
 
@@ -909,9 +912,7 @@
   (if (igo-editor-set-intersection-setup-at
        editor pos
        (igo-editor-mode-get-property (igo-editor-curr-mode editor) :istate))
-      (progn
-        (igo-editor-update-image editor)
-        (igo-editor-update-buffer-text editor))
+      (igo-editor-update-on-modified editor)
     (message "not changed")))
 
 (defun igo-editor-set-intersection-setup-at (editor pos istate)
@@ -935,8 +936,7 @@
             (if (igo-editor-set-turn-setup
                  editor (igo-opposite-color (igo-game-turn game)))
                 (progn
-                  (igo-editor-update-image editor)
-                  (igo-editor-update-buffer-text editor)
+                  (igo-editor-update-on-modified editor)
                   (message "%s's turn."
                            (if (igo-black-p (igo-game-turn game))
                                "black" "white")))
@@ -1030,7 +1030,7 @@
             (if (string= new-comment "")
                 (igo-node-delete-comment curr-node)
               (igo-node-set-comment curr-node new-comment))
-            (igo-editor-update-buffer-text editor))))))
+            (igo-editor-update-on-modified editor))))))
 
 (defun igo-editor-show-comment (&optional editor)
   (interactive)
