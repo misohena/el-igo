@@ -183,7 +183,19 @@
 
 (defun igo-svg-text-on-board (svg center-x center-y board text text-color &optional attributes font-size-scale)
   (let* ((grid-interval (igo-grid-interval board))
-         (font-size (igo-svg-font-size-on-board board font-size-scale)))
+         (font-size (igo-svg-font-size-on-board board font-size-scale))
+         (text-w (string-width text)))
+    ;; Shrink width
+    (if (>= text-w 3)
+        (setq attributes
+              (nconc
+               (list :transform
+                     (format "translate(%s 0) scale(%.4f 1) translate(%s 0)"
+                             (+ center-x)
+                             (/ 1 (* 0.5 text-w))
+                             (- center-x)))
+               attributes)))
+
     (apply #'svg-text svg text
            :x center-x :y center-y :fill text-color
            :font-size (number-to-string font-size)
@@ -340,29 +352,47 @@
      ((igo-white-p istate) "#000")
      (t "#fff"))))
 
+(defun igo-svg-cross-mark (svg x y mark-color board)
+  (let* ((grid-interval (igo-grid-interval board))
+         (cx (* x grid-interval))
+         (cy (* y grid-interval))
+         (r (* 0.25 grid-interval)))
+    (svg-path
+     svg
+     (list (list 'moveto (list (cons (- cx r) (- cy r))))
+           (list 'lineto (list (cons (+ cx r) (+ cy r))))
+           (list 'moveto (list (cons (+ cx r) (- cy r))))
+           (list 'lineto (list (cons (- cx r) (+ cy r)))))
+     :stroke-width 3
+     :stroke (or mark-color (igo-svg-intersection-text-color board x y))
+     :fill "none"
+     :class "mark")))
+
 (defun igo-svg-circle-mark (svg x y mark-color board)
   (let ((grid-interval (igo-grid-interval board)))
     (svg-circle
-     (igo-svg-overlays-group svg)
+     svg
      (* x grid-interval)
      (* y grid-interval)
      (* 0.3 grid-interval)
      :stroke-width 3
      :stroke (or mark-color (igo-svg-intersection-text-color board x y))
-     :fill "none")))
+     :fill "none"
+     :class "mark")))
 
 (defun igo-svg-square-mark (svg x y mark-color board)
   (let* ((grid-interval (igo-grid-interval board))
          (r (* 0.25 grid-interval)))
     (svg-rectangle
-     (igo-svg-overlays-group svg)
+     svg
      (- (* x grid-interval) r)
      (- (* y grid-interval) r)
      (* 2 r)
      (* 2 r)
      :stroke-width 3
      :stroke (or mark-color (igo-svg-intersection-text-color board x y))
-     :fill "none")))
+     :fill "none"
+     :class "mark")))
 
 (defun igo-svg-triangle-mark (svg x y mark-color board)
   (let* ((grid-interval (igo-grid-interval board))
@@ -371,28 +401,41 @@
          (r (* 0.3 grid-interval))
          (rt3 (sqrt 3)))
     (svg-polygon
-     (igo-svg-overlays-group svg)
+     svg
      (list (cons cx (+ cy (* r rt3 -0.55)))
            (cons (+ cx r) (+ cy (* r rt3 0.45)))
            (cons (- cx r) (+ cy (* r rt3 0.45))))
      :stroke-width 3
      :stroke (or mark-color (igo-svg-intersection-text-color board x y))
-     :fill "none")))
+     :fill "none"
+     :class "mark")))
 
-(defun igo-svg-cross-mark (svg x y mark-color board)
-  (let* ((grid-interval (igo-grid-interval board))
-         (cx (* x grid-interval))
-         (cy (* y grid-interval))
-         (r (* 0.25 grid-interval)))
-    (svg-path
-     (igo-svg-overlays-group svg)
-     (list (list 'moveto (list (cons (- cx r) (- cy r))))
-           (list 'lineto (list (cons (+ cx r) (+ cy r))))
-           (list 'moveto (list (cons (+ cx r) (- cy r))))
-           (list 'lineto (list (cons (- cx r) (+ cy r)))))
-     :stroke-width 3
-     :stroke (or mark-color (igo-svg-intersection-text-color board x y))
-     :fill "none")))
+(defun igo-svg-marks (svg board marks)
+  (igo-svg-remove-marks svg)
+
+  (dolist (mark marks)
+    (let* ((type (igo-mark-type mark))
+           (pos (igo-mark-pos mark))
+           (text (igo-mark-text mark))
+           (x (igo-board-pos-to-x board pos))
+           (y (igo-board-pos-to-y board pos))
+           (parent (igo-svg-overlays-group svg)))
+      (cond
+       ((eq type 'cross) (igo-svg-cross-mark parent x y nil board))
+       ((eq type 'circle) (igo-svg-circle-mark parent x y nil board))
+       ((eq type 'square) (igo-svg-square-mark parent x y nil board))
+       ((eq type 'triangle) (igo-svg-triangle-mark parent x y nil board))
+       ((eq type 'text) (igo-svg-text-at-intersection
+                         parent x y board
+                         (igo-mark-text mark)
+                         (igo-svg-intersection-text-color board x y)
+                         '(:class "mark")))
+       ))))
+
+(defun igo-svg-remove-marks (svg)
+  (let ((parent (igo-svg-overlays-group svg)))
+    (dolist (node (dom-by-class parent "^mark$"))
+      (dom-remove-node parent node))))
 
 
 ;;

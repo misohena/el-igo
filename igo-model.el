@@ -822,6 +822,35 @@
 (defun igo-node-get-setup-property (node)
   (igo-node-get-property node :setup))
 
+;; Node - Properties - Marks
+
+(defun igo-mark (type pos &optional text)
+  (if text
+      (list type pos text)
+    (list type pos)))
+(defun igo-mark-type (mark) (nth 0 mark))
+(defun igo-mark-pos (mark) (nth 1 mark))
+(defun igo-mark-text (mark) (nth 2 mark))
+
+(defun igo-node-set-marks-property (node marks)
+  (igo-node-set-property node :marks marks))
+
+(defun igo-node-get-marks-property (node)
+  (igo-node-get-property node :marks))
+
+(defun igo-node-delete-mark-at (node pos)
+  (igo-node-set-marks-property
+   node
+   (seq-filter (lambda (mark) (/= (igo-mark-pos mark) pos))
+               (igo-node-get-marks-property node))))
+
+(defun igo-node-set-mark-at (node pos type &optional text)
+  (igo-node-delete-mark-at node pos)
+  ;; push a mark to end of list.
+  (igo-node-set-marks-property
+   node
+   (nconc (igo-node-get-marks-property node) (list (igo-mark type pos text)))))
+
 ;; Node - Properties - SGF Location
 ;; 1)
 ;; tree-begin-opt=>                    <=tree-end-opt

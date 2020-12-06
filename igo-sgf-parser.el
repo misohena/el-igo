@@ -497,13 +497,14 @@ ex:
         ;; Create a node
         (let ((curr-node (if prev-node (igo-node-create-next-node prev-node) (igo-node nil)))
               (moved nil)
-              setup-black setup-white setup-empty setup-turn)
+              setup-black setup-white setup-empty setup-turn
+              marks)
           ;; For each properties
           (dolist (sgf-prop (igo-sgf-node-properties sgf-node))
             (let ((prop-id (igo-sgf-property-id sgf-prop))
                   (prop-values (igo-sgf-property-values sgf-prop)))
               (cond
-               ;; Move
+               ;; Move Properties
                ((or (string= prop-id "B") (string= prop-id "W"))
                 (if moved
                     (error "%sOnly one move in one node"
@@ -521,7 +522,7 @@ ex:
                 (setq move-number (1+ move-number))
                 (setq turn (igo-opposite-color turn))
                 (setq moved t))
-               ;; Setup
+               ;; Setup Properties
                ((string= prop-id "AE")
                 (setq setup-empty (nconc setup-empty (igo-sgf-values-as-point-pos-list prop-values w h))))
                ((string= prop-id "AB")
@@ -530,6 +531,35 @@ ex:
                 (setq setup-white (nconc setup-white (igo-sgf-values-as-point-pos-list prop-values w h))))
                ((string= prop-id "PL")
                 (setq setup-turn (igo-sgf-value-as-color (car prop-values))))
+               ;; Markup Properties
+               ;; see: igo-svg-marks
+               ((or (string= prop-id "MA")
+                    (string= prop-id "CR")
+                    (string= prop-id "SQ")
+                    (string= prop-id "TR"))
+                (let ((type (cdr (assoc prop-id '(("MA" . cross)
+                                                  ("CR" . circle)
+                                                  ("SQ" . square)
+                                                  ("TR" . triangle))))))
+                  (setq marks
+                        (nconc
+                         marks
+                         (mapcar
+                          (lambda (pos) (igo-mark type pos))
+                          (igo-sgf-values-as-point-pos-list prop-values w h))))))
+               ((string= prop-id "LB")
+                (setq marks
+                      (nconc
+                       marks
+                       (mapcar (lambda (value)
+                                 (let* ((value-pos-text (igo-sgf-split-compose
+                                                         value))
+                                        (pos (igo-sgf-value-as-point-pos
+                                              (car value-pos-text) w h))
+                                        (text (igo-sgf-value-as-simple-text
+                                               (cdr value-pos-text))))
+                                   (igo-mark 'text pos text)))
+                               prop-values))))
                ;; Discard FF, GM, SZ Property
                ((string= prop-id "FF") )
                ((string= prop-id "GM") )
@@ -545,6 +575,9 @@ ex:
                        (igo-sgf-node-location-string sgf-node) ))
             (igo-node-set-setup-property curr-node (igo-board-changes setup-black setup-white setup-empty nil setup-turn nil nil))
             (if setup-turn (setq turn setup-turn)) )
+          ;; Record markup property
+          (if marks
+              (igo-node-set-marks-property curr-node marks))
           ;; Record location
           (igo-node-set-sgf-location
            curr-node
@@ -627,6 +660,34 @@ ex:
             (if change-empty (concat "AE" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-empty "")))
             (if change-turn (concat "PL[" (igo-sgf-color change-turn) "]"))))))
 
+     ;; Markup Properties
+     (let ((marks (igo-node-get-marks-property node)))
+       (when marks
+         (concat
+          ;; MA CR SQ TR
+          (mapconcat
+           (lambda (type.pid)
+             (let ((values-str
+                    (mapconcat
+                     (lambda (m)
+                       (if (eq (igo-mark-type m) (car type.pid))
+                           (concat "[" (igo-sgf-point (igo-mark-pos m) w) "]")))
+                     marks "")))
+               (if (not (string= values-str ""))
+                   (concat (cdr type.pid) values-str))))
+           '((cross . "MA")
+             (circle . "CR")
+             (square . "SQ")
+             (triangle . "TR"))
+           "")
+          ;; LB
+          (mapconcat
+           (lambda (m)
+             (if (eq (igo-mark-type m) 'text)
+                 (concat "LB[" (igo-sgf-point (igo-mark-pos m) w) ":"
+                         (igo-sgf-simple-text (igo-mark-text m) t) "]")))
+           marks ""))))
+
      ;; Other SGF Properties
      (let ((props (igo-node-get-sgf-properties node))
            strs)
@@ -643,6 +704,13 @@ ex:
 
 
 (defun igo-sgf-text (text &optional compose-type)
+  ;; see: https://www.red-bean.com/sgf/sgf4.html#text
+  (if compose-type
+      (replace-regexp-in-string "\\([]:\\\\]\\)" "\\\\\\1" text) ;;escape :
+    (replace-regexp-in-string "\\([]\\\\]\\)" "\\\\\\1" text)))
+
+(defun igo-sgf-simple-text (text &optional compose-type)
+  ;;@todo same as igo-sgf-text?
   ;; see: https://www.red-bean.com/sgf/sgf4.html#text
   (if compose-type
       (replace-regexp-in-string "\\([]:\\\\]\\)" "\\\\\\1" text) ;;escape :

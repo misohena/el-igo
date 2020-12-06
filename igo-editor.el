@@ -185,8 +185,9 @@
     (define-key km [igo-editor-forward mouse-1] #'igo-editor-next-node)
     (define-key km [igo-editor-last mouse-1] #'igo-editor-last-node)
     ;; editing mode
-    (define-key km "M" #'igo-editor-move-mode)
+    (define-key km "Q" #'igo-editor-move-mode)
     (define-key km "F" #'igo-editor-free-edit-mode)
+    (define-key km "M" #'igo-editor-mark-edit-mode)
     ;; visibility
     (define-key km (kbd "s n") #'igo-editor-toggle-move-number)
     (define-key km (kbd "s b") #'igo-editor-toggle-branch-text)
@@ -225,6 +226,27 @@
     (define-key km "T" #'igo-editor-free-edit-toggle-turn)
     km))
 
+(defvar igo-editor-mark-edit-mode-map
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km igo-editor-graphical-mode-map)
+    (define-key km [igo-grid mouse-1] #'igo-editor-mark-edit-board-click)
+    ;;(define-key km [igo-grid mouse-3] #'igo-editor-mark-edit-board-click-r)
+    (define-key km [igo-editor-mark-edit-quit mouse-1] #'igo-editor-move-mode)
+    (define-key km [igo-editor-mark-edit-cross mouse-1] #'igo-editor-mark-edit-cross)
+    (define-key km [igo-editor-mark-edit-circle mouse-1] #'igo-editor-mark-edit-circle)
+    (define-key km [igo-editor-mark-edit-square mouse-1] #'igo-editor-mark-edit-square)
+    (define-key km [igo-editor-mark-edit-triangle mouse-1] #'igo-editor-mark-edit-triangle)
+    (define-key km [igo-editor-mark-edit-text mouse-1] #'igo-editor-mark-edit-text)
+    (define-key km [igo-editor-mark-edit-del mouse-1] #'igo-editor-mark-edit-del)
+    (define-key km "Q" #'igo-editor-move-mode)
+    (define-key km "X" #'igo-editor-mark-edit-cross)
+    (define-key km "O" #'igo-editor-mark-edit-circle)
+    (define-key km "S" #'igo-editor-mark-edit-square)
+    (define-key km "T" #'igo-editor-mark-edit-triangle)
+    (define-key km "E" #'igo-editor-mark-edit-text)
+    (define-key km "D" #'igo-editor-mark-edit-del)
+    km))
+
 (defun igo-editor-self-insert-command ()
   (interactive))
 
@@ -241,6 +263,7 @@
                              (cons "Quit" (lambda () (igo-editor-quit editor)))
                              (cons "Text Mode" (lambda () (igo-editor-text-mode editor)))
                              (cons "Free Edit" (lambda () (igo-editor-free-edit-mode editor)))
+                             (cons "Mark Edit" (lambda () (igo-editor-mark-edit-mode editor)))
                              ;;(cons "Marker Edit" igo-editor-marker-edit-mode)
                              (cons "Edit Comment" (lambda () (igo-editor-edit-comment editor)))
                              )))))
@@ -478,6 +501,10 @@
                (not (igo-editor-get-property editor :show-move-number)))
           (igo-svg-last-move svg game)
         (igo-svg-remove-last-move svg))
+
+      (igo-svg-marks
+       svg board
+       (igo-node-get-marks-property (igo-game-current-node game)))
 
       ;; Update image descriptor & display property
       (let ((image (svg-image svg :map (car image-map))))
@@ -1044,6 +1071,104 @@
               (funcall set-to-changes undo-changes curr-value)
               (funcall set-to-game game new-value)
               t)))))))
+
+;; Editor - Mark Edit Mode
+
+(defun igo-editor-mark-edit-mode (&optional editor)
+  (interactive)
+  (if (null editor) (setq editor (igo-editor-at)))
+
+  (when editor
+    (igo-editor-mode-set
+     editor
+     (igo-editor-mode-create
+      #'igo-editor-mark-edit-mode-start
+      #'igo-editor-mark-edit-mode-stop
+      (list
+       (cons :mark-type 'cross))
+      ) )
+    (igo-editor-update-image editor)))
+
+(defun igo-editor-mark-edit-mode-start (editor mode)
+  (igo-editor-set-keymap editor igo-editor-mark-edit-mode-map)
+  (igo-editor-create-mark-edit-bar editor)
+  (message "Mark Edit Mode"))
+
+(defun igo-editor-mark-edit-mode-stop (editor mode)
+  (igo-editor-set-keymap editor igo-editor-graphical-mode-map))
+
+(defun igo-editor-create-mark-edit-bar (editor)
+  (let ((svg (igo-editor-svg editor))
+        (board (igo-editor-board editor))
+        (image-map (igo-editor-image-map editor)))
+    (when (and svg board image-map)
+      (igo-editor-init-image-map editor)
+      (let* ((bar-y (igo-svg-board-pixel-h board))
+             (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
+             (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
+        (igo-ui-create-button bar 'igo-editor-mark-edit-quit pos "Quit" image-map)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-cross pos "X" image-map)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-circle pos "O" image-map)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-square pos "SQ" image-map)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-triangle pos "TR" image-map)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-text pos "tExt" image-map)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-del pos "Del" image-map)
+        ))))
+
+(defun igo-editor-mark-edit-select (mark-type)
+  (igo-editor-set-mode-property (igo-editor-at) :mark-type mark-type)
+  (message "Select %s mark" (if (null mark-type) "delete"
+                         (symbol-name mark-type))))
+
+(defun igo-editor-mark-edit-cross ()
+  (interactive)
+  (igo-editor-mark-edit-select 'cross))
+
+(defun igo-editor-mark-edit-circle ()
+  (interactive)
+  (igo-editor-mark-edit-select 'circle))
+
+(defun igo-editor-mark-edit-square ()
+  (interactive)
+  (igo-editor-mark-edit-select 'square))
+
+(defun igo-editor-mark-edit-triangle ()
+  (interactive)
+  (igo-editor-mark-edit-select 'triangle))
+
+(defun igo-editor-mark-edit-text ()
+  (interactive)
+  (igo-editor-mark-edit-select 'text))
+
+(defun igo-editor-mark-edit-del ()
+  (interactive)
+  (igo-editor-mark-edit-select nil))
+
+(defun igo-editor-mark-edit-board-click ()
+  (interactive)
+  (let ((ev (igo-editor-last-input-event-as-intersection-click)))
+    (if ev
+        (let* ((editor (plist-get ev :editor))
+               (pos (plist-get ev :pos))
+               (game (igo-editor-game editor))
+               (curr-node (igo-game-current-node game))
+               (mark-type (igo-editor-get-mode-property editor :mark-type)))
+
+          ;; Rewrite the mark on the intersection POS.
+          (cond
+           ((eq mark-type 'text)
+            (igo-node-set-mark-at curr-node pos mark-type
+                                     (read-string "Text: ")))
+           ((or (eq mark-type 'cross)
+                (eq mark-type 'circle)
+                (eq mark-type 'square)
+                (eq mark-type 'triangle))
+            (igo-node-set-mark-at curr-node pos mark-type))
+           ((null mark-type)
+            (igo-node-delete-mark-at curr-node pos)))
+
+          ;; Update
+          (igo-editor-update-on-modified editor)))))
 
 ;; Editor - Comment
 

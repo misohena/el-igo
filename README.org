@@ -101,25 +101,25 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 
 *** グラフィカルモード共通
 
-| 操作                      | 説明                                   | 関数                            |
-|---------------------------+----------------------------------------+---------------------------------|
-| C-c q                     | エディタの終了                         | igo-editor-quit                 |
-| C-g, t                    | テキストモードへ移行                   | igo-editor-text-mode            |
-|---------------------------+----------------------------------------+---------------------------------|
-| a, \vert{}<ボタンクリック | 最初へ                                 | igo-editor-first-node           |
-| e, >\vert{}ボタンクリック | 最後へ(デフォルト選択でたどれる所まで) | igo-editor-last-node            |
-| b, <ボタンクリック        | 前へ                                   | igo-editor-previous-node        |
-| f, >ボタンクリック        | 次へ(デフォルト選択でたどれる場合)     | igo-editor-next-node            |
-| n                         | 次の盤面を分岐の中から選択して表示     | igo-editor-select-next-node     |
-|---------------------------+----------------------------------------+---------------------------------|
-| M                         | 着手モード                             | igo-editor-move-mode            |
-| F                         | フリー編集モード                       | igo-editor-free-edit-mode       |
-|---------------------------+----------------------------------------+---------------------------------|
-| s n                       | 手順番号表示切り替え                   | igo-editor-toggle-move-number   |
-| s b                       | 分岐表示切り替え                       | igo-editor-toggle-branch-text   |
-|---------------------------+----------------------------------------+---------------------------------|
-| c                         | コメントの編集                         | igo-editor-edit-comment         |
-| C-c i                     | 盤面の初期化                           | igo-editor-init-board           |
+| 操作                      | 説明                                   | 関数                          |
+|---------------------------+----------------------------------------+-------------------------------|
+| C-g, t                    | テキストモードへ移行                   | igo-editor-text-mode          |
+|---------------------------+----------------------------------------+-------------------------------|
+| a, \vert{}<ボタンクリック | 最初へ                                 | igo-editor-first-node         |
+| e, >\vert{}ボタンクリック | 最後へ(デフォルト選択でたどれる所まで) | igo-editor-last-node          |
+| b, <ボタンクリック        | 前へ                                   | igo-editor-previous-node      |
+| f, >ボタンクリック        | 次へ(デフォルト選択でたどれる場合)     | igo-editor-next-node          |
+| n                         | 次の盤面を分岐の中から選択して表示     | igo-editor-select-next-node   |
+|---------------------------+----------------------------------------+-------------------------------|
+| Q                         | 着手モード                             | igo-editor-move-mode          |
+| F                         | フリー編集モード                       | igo-editor-free-edit-mode     |
+| M                         | マーク編集モード                       | igo-editor-mark-edit-mode     |
+|---------------------------+----------------------------------------+-------------------------------|
+| s n                       | 手順番号表示切り替え                   | igo-editor-toggle-move-number |
+| s b                       | 分岐表示切り替え                       | igo-editor-toggle-branch-text |
+|---------------------------+----------------------------------------+-------------------------------|
+| c                         | コメントの編集                         | igo-editor-edit-comment       |
+| C-c i                     | 盤面の初期化                           | igo-editor-init-board         |
 
 *** 着手モード
 
@@ -143,6 +143,19 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 | W, Whiteボタンクリック | 白石を選択する           | igo-editor-free-edit-white       |
 | E, Emptyボタンクリック | 空点を選択する           | igo-editor-free-edit-empty       |
 | T, Turnボタンクリック  | 次の手番を反転させる     | igo-editor-free-edit-toggle-turn |
+
+*** マーク編集モード
+
+| 操作                  | 説明                     | 関数                             |
+|-----------------------+--------------------------+----------------------------------|
+| Quitボタンクリック    | 着手モードへ切り替え     | igo-editor-move-mode             |
+| 盤面をクリック        | 交点を選択中の状態にする | igo-editor-mark-edit-board-click |
+| X, Xボタンクリック    | ×マークを選択する       | igo-editor-mark-edit-cross       |
+| O, Oボタンクリック    | ○マークを選択する       | igo-editor-mark-edit-circle      |
+| S, SQボタンクリック   | □マークを選択する       | igo-editor-mark-edit-square      |
+| T, TRボタンクリック   | △マークを選択する       | igo-editor-mark-edit-triangle    |
+| E, Textボタンクリック | テキストを選択する       | igo-editor-mark-edit-text        |
+| D, Delボタンクリック  | 消去を選択する           | igo-editor-mark-edit-del         |
 
 ** 分岐の編集
 
