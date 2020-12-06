@@ -28,6 +28,11 @@
 (require 'igo-sgf-parser)
 (require 'igo-view)
 
+(defcustom igo-editor-move-point-on-click t
+  "If non-nil, move point to editor clicked.")
+
+;; Editor Management
+
 (defun igo-edit-region (begin end)
   (interactive "r")
 
@@ -48,10 +53,11 @@
 
 (defun igo-editor-at (&optional pos)
   (if (null pos)
-      (setq pos
-            (if (mouse-event-p last-input-event)
-                (posn-point (event-start last-input-event))
-              (point))))
+      (if (mouse-event-p last-input-event)
+          (progn
+            (setq pos (posn-point (event-start last-input-event)))
+            (if igo-editor-move-point-on-click (goto-char pos)))
+        (setq pos (point))))
   (or
    (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-at pos))
    (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-at (1- pos)))
