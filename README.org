@@ -114,9 +114,6 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 |---------------------------+----------------------------------------+---------------------------------|
 | M                         | 着手モード                             | igo-editor-move-mode            |
 | F                         | フリー編集モード                       | igo-editor-free-edit-mode       |
-| B                         | フリー編集モード(黒石選択)             | igo-editor-free-edit-mode-black |
-| W                         | フリー編集モード(白石選択)             | igo-editor-free-edit-mode-white |
-| E                         | フリー編集モード(空点選択)             | igo-editor-free-edit-mode-empty |
 |---------------------------+----------------------------------------+---------------------------------|
 | s n                       | 手順番号表示切り替え                   | igo-editor-toggle-move-number   |
 | s b                       | 分岐表示切り替え                       | igo-editor-toggle-branch-text   |
@@ -138,14 +135,14 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 
 (現在の所、一番最初の盤面でのみ使用できます)
 
-| 操作                  | 説明                     | 関数                                  |
-|-----------------------+--------------------------+---------------------------------------|
-| 盤面をクリック        | 交点を選択中の状態にする | igo-editor-free-edit-mode-board-click |
-| Endボタンクリック     | 着手モードへ切り替え     | igo-editor-move-mode                  |
-| Blackボタンクリック   | 黒石を選択する           | igo-editor-free-edit-mode-black       |
-| Whiteボタンクリック   | 白石を選択する           | igo-editor-free-edit-mode-white       |
-| Emptyボタンクリック   | 空点を選択する           | igo-editor-free-edit-mode-empty       |
-| T, Turnボタンクリック | 次の手番を反転させる     | igo-editor-toggle-next-turn-setup     |
+| 操作                   | 説明                     | 関数                             |
+|------------------------+--------------------------+----------------------------------|
+| Quitボタンクリック     | 着手モードへ切り替え     | igo-editor-move-mode             |
+| 盤面をクリック         | 交点を選択中の状態にする | igo-editor-free-edit-board-click |
+| B, Blackボタンクリック | 黒石を選択する           | igo-editor-free-edit-black       |
+| W, Whiteボタンクリック | 白石を選択する           | igo-editor-free-edit-white       |
+| E, Emptyボタンクリック | 空点を選択する           | igo-editor-free-edit-empty       |
+| T, Turnボタンクリック  | 次の手番を反転させる     | igo-editor-free-edit-toggle-turn |
 
 ** 分岐の編集
 

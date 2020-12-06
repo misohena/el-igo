@@ -187,9 +187,6 @@
     ;; editing mode
     (define-key km "M" #'igo-editor-move-mode)
     (define-key km "F" #'igo-editor-free-edit-mode)
-    (define-key km "B" #'igo-editor-free-edit-mode-black)
-    (define-key km "W" #'igo-editor-free-edit-mode-white)
-    (define-key km "E" #'igo-editor-free-edit-mode-empty)
     ;; visibility
     (define-key km (kbd "s n") #'igo-editor-toggle-move-number)
     (define-key km (kbd "s b") #'igo-editor-toggle-branch-text)
@@ -214,14 +211,18 @@
 (defvar igo-editor-free-edit-mode-map
   (let ((km (make-sparse-keymap)))
     (set-keymap-parent km igo-editor-graphical-mode-map)
-    (define-key km [igo-grid mouse-1] #'igo-editor-free-edit-mode-board-click)
-    (define-key km [igo-grid mouse-3] #'igo-editor-free-edit-mode-board-click-r)
-    (define-key km [igo-editor-free-edit-exit mouse-1] #'igo-editor-move-mode)
-    (define-key km [igo-editor-free-edit-black mouse-1] #'igo-editor-free-edit-mode-black)
-    (define-key km [igo-editor-free-edit-white mouse-1] #'igo-editor-free-edit-mode-white)
-    (define-key km [igo-editor-free-edit-empty mouse-1] #'igo-editor-free-edit-mode-empty)
-    (define-key km [igo-editor-free-edit-turn mouse-1] #'igo-editor-toggle-next-turn-setup)
-    (define-key km "T" #'igo-editor-toggle-next-turn-setup)
+    (define-key km [igo-grid mouse-1] #'igo-editor-free-edit-board-click)
+    (define-key km [igo-grid mouse-3] #'igo-editor-free-edit-board-click-r)
+    (define-key km [igo-editor-free-edit-quit mouse-1] #'igo-editor-move-mode)
+    (define-key km [igo-editor-free-edit-black mouse-1] #'igo-editor-free-edit-black)
+    (define-key km [igo-editor-free-edit-white mouse-1] #'igo-editor-free-edit-white)
+    (define-key km [igo-editor-free-edit-empty mouse-1] #'igo-editor-free-edit-empty)
+    (define-key km [igo-editor-free-edit-turn mouse-1] #'igo-editor-free-edit-toggle-turn)
+    (define-key km "Q" #'igo-editor-move-mode)
+    (define-key km "B" #'igo-editor-free-edit-black)
+    (define-key km "W" #'igo-editor-free-edit-white)
+    (define-key km "E" #'igo-editor-free-edit-empty)
+    (define-key km "T" #'igo-editor-free-edit-toggle-turn)
     km))
 
 (defun igo-editor-self-insert-command ()
@@ -871,18 +872,6 @@
 
 ;; Editor - Free Edit Mode
 
-(defun igo-editor-free-edit-mode-black ()
-  (interactive)
-  (igo-editor-free-edit-mode (igo-editor-at) 'black))
-
-(defun igo-editor-free-edit-mode-white ()
-  (interactive)
-  (igo-editor-free-edit-mode (igo-editor-at) 'white))
-
-(defun igo-editor-free-edit-mode-empty ()
-  (interactive)
-  (igo-editor-free-edit-mode (igo-editor-at) 'empty))
-
 (defun igo-editor-free-edit-mode (&optional editor istate)
   (interactive)
   (if (null editor) (setq editor (igo-editor-at)))
@@ -921,6 +910,24 @@
         (igo-ui-create-button bar 'igo-editor-free-edit-empty pos "Empty" image-map)
         (igo-ui-create-button bar 'igo-editor-free-edit-turn pos "Turn" image-map)
         ))))
+
+(defun igo-editor-free-edit-select (istate)
+  (igo-editor-set-mode-property (igo-editor-at) :istate istate)
+  (message "Select %s" (symbol-name istate)))
+
+(defun igo-editor-free-edit-black ()
+  (interactive)
+  (igo-editor-free-edit-select 'black))
+
+(defun igo-editor-free-edit-white ()
+  (interactive)
+  (igo-editor-free-edit-select 'white))
+
+(defun igo-editor-free-edit-empty ()
+  (interactive)
+  (igo-editor-free-edit-select 'empty))
+
+(defun igo-editor-free-edit-board-click ()
   (interactive)
   (let ((ev (igo-editor-last-input-event-as-intersection-click)))
     (if ev
@@ -949,7 +956,7 @@
    (lambda (game istate) (igo-board-set-at (igo-game-board game) pos istate))
    (lambda (changes) (igo-board-changes-delete-at changes pos))))
 
-(defun igo-editor-toggle-next-turn-setup (&optional editor)
+(defun igo-editor-free-edit-toggle-turn (&optional editor)
   (interactive)
   (if (null editor) (setq editor (igo-editor-at)))
   (if editor
