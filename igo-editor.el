@@ -981,7 +981,8 @@
    (lambda (game) (igo-board-get-at (igo-game-board game) pos))
    (lambda (changes istate) (igo-board-changes-set-at changes pos istate))
    (lambda (game istate) (igo-board-set-at (igo-game-board game) pos istate))
-   (lambda (changes) (igo-board-changes-delete-at changes pos))))
+   (lambda (changes) (igo-board-changes-delete-at changes pos))
+   'empty))
 
 (defun igo-editor-free-edit-toggle-turn (&optional editor)
   (interactive)
@@ -1008,7 +1009,8 @@
    #'igo-game-turn
    #'igo-board-changes-turn-set
    #'igo-game-set-turn
-   (lambda (changes) (igo-board-changes-turn-set changes nil))))
+   (lambda (changes) (igo-board-changes-turn-set changes nil))
+   'black))
 
 (defun igo-editor-set-setup-value (editor
                                    new-value
@@ -1017,7 +1019,8 @@
                                    get-from-game
                                    set-to-changes
                                    set-to-game
-                                   delete-from-changes)
+                                   delete-from-changes
+                                   initial-value)
   "Add setup value to setup property of current node."
   (let* ((game (igo-editor-game editor))
          (curr-node (igo-game-current-node game)))
@@ -1036,18 +1039,19 @@
         (if setup-value
             ;; value change is already in setup changes
             ;; undo-value => curr-value == setup-value => new-value
-            (let ((undo-value (funcall get-from-changes undo-changes)))
-              (when (not (funcall same-value-p new-value setup-value))
+            (when (not (funcall same-value-p new-value setup-value))
+              (let ((undo-value (or (funcall get-from-changes undo-changes)
+                                    initial-value)))
                 ;; modify setup&undo changes
                 (if (and undo-value (funcall same-value-p new-value undo-value))
                     ;; (new-value == undo-value)
                     ;; delete change value
                     (progn
                       (funcall delete-from-changes setup-changes)
-                      (funcall delete-from-changes undo-changes pos)
-                      (if (igo-board-changes-empty-p setup-changes)
-                          ;;@todo erase setup node? (if empty)(if non-root)
-                          )
+                      (funcall delete-from-changes undo-changes)
+                      ;;@todo erase setup node? (if empty)(if non-root)
+                      ;; (if (igo-board-changes-empty-p setup-changes)
+                      ;;     )
                       )
                   ;; (new-value != undo-value)
                   ;; modify setup change, keep undo change
