@@ -689,6 +689,19 @@
 (defun igo-editor-mode-get-property (mode key)
   (cdr (assq key (aref mode igo-editor-mode-idx-properties))))
 
+(defun igo-editor-set-mode-property (editor key value)
+  (if editor
+      (let ((mode (igo-editor-curr-mode editor)))
+        (if mode
+            (igo-editor-mode-set-property mode key value)))))
+
+(defun igo-editor-get-mode-property (editor key)
+  (if editor
+      (let ((mode (igo-editor-curr-mode editor)))
+        (if mode
+            (igo-editor-mode-get-property mode key)))))
+
+
 ;; Editor - Move Mode
 
 (defun igo-editor-move-mode (&optional editor)
@@ -919,7 +932,7 @@
 (defun igo-editor-edit-intersection (editor pos)
   (if (igo-editor-set-intersection-setup-at
        editor pos
-       (igo-editor-mode-get-property (igo-editor-curr-mode editor) :istate))
+       (igo-editor-get-mode-property editor :istate))
       (igo-editor-update-on-modified editor)
     (message "not changed")))
 
