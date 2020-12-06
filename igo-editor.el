@@ -457,13 +457,7 @@
 
           (igo-svg-board svg 0 0 board)
 
-          (igo-ui-push-clickable-rect
-           image-map
-           'igo-grid
-           (igo-grid-clickable-left board)
-           (igo-grid-clickable-top board)
-           (igo-grid-clickable-width board)
-           (igo-grid-clickable-height board))
+          (igo-editor-init-image-map editor)
 
           (igo-editor-create-navi-bar editor)))
 
@@ -487,6 +481,20 @@
       (let ((image (svg-image svg :map (car image-map))))
         (overlay-put (igo-editor-overlay editor) 'display image)
         (igo-editor--image-set editor image)))))
+
+(defun igo-editor-init-image-map (editor)
+  (let ((board (igo-editor-board editor))
+        (image-map (igo-editor-image-map editor)))
+
+    (setcar image-map nil)
+
+    (igo-ui-push-clickable-rect
+     image-map
+     'igo-grid
+     (igo-grid-clickable-left board)
+     (igo-grid-clickable-top board)
+     (igo-grid-clickable-width board)
+     (igo-grid-clickable-height board))))
 
 (defun igo-editor-update-branches-text (editor)
   (let* ((game (igo-editor-game editor))
@@ -708,18 +716,19 @@
   (let ((svg (igo-editor-svg editor))
         (board (igo-editor-board editor))
         (image-map (igo-editor-image-map editor)))
-    (if (and svg board image-map)
-        (let* ((bar-y (igo-svg-board-pixel-h board))
-               (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
-               (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
-          (igo-ui-create-button bar 'igo-editor-menu pos "Menu" image-map)
-          (igo-ui-create-button bar 'igo-editor-first pos "|<" image-map)
-          (igo-ui-create-button bar 'igo-editor-previous pos " <" image-map)
-          (igo-ui-create-button bar 'igo-editor-forward pos "> " image-map)
-          (igo-ui-create-button bar 'igo-editor-last pos ">|" image-map)
-          (igo-ui-create-button bar 'igo-editor-pass pos "Pass" image-map)
-          ;;(igo-ui-create-button bar 'igo-editor-resign pos "Resign" image-map)
-          ))))
+    (when (and svg board image-map)
+      (igo-editor-init-image-map editor)
+      (let* ((bar-y (igo-svg-board-pixel-h board))
+             (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
+             (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
+        (igo-ui-create-button bar 'igo-editor-menu pos "Menu" image-map)
+        (igo-ui-create-button bar 'igo-editor-first pos "|<" image-map)
+        (igo-ui-create-button bar 'igo-editor-previous pos " <" image-map)
+        (igo-ui-create-button bar 'igo-editor-forward pos "> " image-map)
+        (igo-ui-create-button bar 'igo-editor-last pos ">|" image-map)
+        (igo-ui-create-button bar 'igo-editor-pass pos "Pass" image-map)
+        ;;(igo-ui-create-button bar 'igo-editor-resign pos "Resign" image-map)
+        ))))
 
 (defun igo-editor-move-mode-board-click ()
   (interactive)
@@ -887,18 +896,17 @@
   (let ((svg (igo-editor-svg editor))
         (board (igo-editor-board editor))
         (image-map (igo-editor-image-map editor)))
-    (if (and svg board image-map)
-        (let* ((bar-y (igo-svg-board-pixel-h board))
-               (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
-               (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
-          (igo-ui-create-button bar 'igo-editor-free-edit-exit pos "End" image-map)
-          (igo-ui-create-button bar 'igo-editor-free-edit-black pos "Black" image-map)
-          (igo-ui-create-button bar 'igo-editor-free-edit-white pos "White" image-map)
-          (igo-ui-create-button bar 'igo-editor-free-edit-empty pos "Empty" image-map)
-          (igo-ui-create-button bar 'igo-editor-free-edit-turn pos "Turn" image-map)
-          ))))
-
-(defun igo-editor-free-edit-mode-board-click ()
+    (when (and svg board image-map)
+      (igo-editor-init-image-map editor)
+      (let* ((bar-y (igo-svg-board-pixel-h board))
+             (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
+             (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
+        (igo-ui-create-button bar 'igo-editor-free-edit-quit pos "Quit" image-map)
+        (igo-ui-create-button bar 'igo-editor-free-edit-black pos "Black" image-map)
+        (igo-ui-create-button bar 'igo-editor-free-edit-white pos "White" image-map)
+        (igo-ui-create-button bar 'igo-editor-free-edit-empty pos "Empty" image-map)
+        (igo-ui-create-button bar 'igo-editor-free-edit-turn pos "Turn" image-map)
+        ))))
   (interactive)
   (let ((ev (igo-editor-last-input-event-as-intersection-click)))
     (if ev
