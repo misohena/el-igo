@@ -57,7 +57,7 @@
 
 ;; Fontify
 
-(defun igo-org-fontify-block (start end)
+(defun igo-org-fontify-block (start end &optional options)
   ;; Skip leading&trailing line break
   ;; (#+begin_src sgf[start]\n ... \n[end]#+end_src)
   (if (and (< start end) (= (char-after start) ?\n))
@@ -71,7 +71,7 @@
 
     (if (null editor)
         ;; Create a new editor
-        (setq editor (igo-editor start end nil nil t))
+        (setq editor (igo-org-create-editor start end options))
       ;; Cover region.
       (igo-editor-set-region editor start end)
       ;; Update editor state from region text.
@@ -83,6 +83,23 @@
                            (igo-editor-last-error-end editor)
                            'face 'igo-org-error-face))))
 
+(defun igo-org-create-editor (start end options-str)
+  (let ((editor (igo-editor start end nil nil t))
+        (options (org-babel-parse-header-arguments options-str t)))
+    ;; Apply options to editor
+    (dolist (opt options)
+      (cond
+       ((eq (car opt) :status-bar)
+        (igo-editor-set-status-bar-visible editor (igo-org-opt-bool (cdr opt))))
+       ((eq (car opt) :move-number)
+        (igo-editor-set-move-number-visible editor (igo-org-opt-bool (cdr opt))))
+       ((eq (car opt) :branch-text)
+        (igo-editor-set-branch-text-visible editor (igo-org-opt-bool (cdr opt))))
+       ))
+    editor))
+
+(defun igo-org-opt-bool (value)
+  (null (member value '("no" "nil" nil))))
 
 ;; Fontify src block (#+begin_src sgf ~ #+end_src)
 
@@ -117,13 +134,13 @@
 					    eol))
 				 (optional (group "_" (group (one-or-more (any "a-zA-Z"))))))
 			  (zero-or-more blank)
-			  (group (group (zero-or-more (not (any " \t\n"))))
-				 (zero-or-more blank)
-				 (group (zero-or-more any)))))
+                          ;; options
+			  (group (zero-or-more any))))
 	   limit t)
       (let ((block-start (match-end 0))  ; includes the \n at end of #+begin line
 	    (block-end nil)              ; will include \n after end of block content
 	    (dc3 (downcase (match-string 3)))
+            (options (match-string 6))
 	     block-type)
 	(cond
 	 ((and (match-end 4) (equal dc3 "+begin"))
@@ -144,7 +161,7 @@
             ;; Fontify begin_igo block
             ;;
             (when (string= block-type "igo")
-              (igo-org-fontify-block block-start block-end)
+              (igo-org-fontify-block block-start block-end options)
               t))))))))
 
 ;; Unfontify

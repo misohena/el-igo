@@ -651,27 +651,48 @@
                          :fill (if (igo-black-p turn) "#ccc" "#444"))
           (igo-svg-text-on-board group x y board text text-color)))))
 
-(defun igo-editor-toggle-status-bar (&optional editor)
-  (interactive)
+
+(defun igo-editor-set-property-and-update-image
+    (editor key value &optional recreate)
   (if (null editor) (setq editor (igo-editor-at)))
   (when editor
-    (igo-editor-toggle-property editor :show-status-bar)
-    ;; re-create image
-    (igo-editor-update-image editor t)))
+    (igo-editor-set-property editor key value)
+    (igo-editor-update-image editor recreate)))
+
+(defun igo-editor-toggle-property-and-update-image
+    (editor key &optional recreate)
+  (if (null editor) (setq editor (igo-editor-at)))
+  (when editor
+    (igo-editor-set-property-and-update-image
+     editor
+     key
+     (not (igo-editor-get-property editor key))
+     recreate)))
+
+(defun igo-editor-set-status-bar-visible (editor visible)
+  ;;needs recreate image
+  (igo-editor-set-property-and-update-image editor :show-status-bar visible t))
+
+(defun igo-editor-set-move-number-visible (editor visible)
+  (igo-editor-set-property-and-update-image editor :show-move-number visible))
+
+(defun igo-editor-set-branch-text-visible (editor visible)
+  (igo-editor-set-property-and-update-image editor :show-branches visible))
+
+(defun igo-editor-toggle-status-bar (&optional editor)
+  (interactive)
+  (igo-editor-toggle-property-and-update-image
+   editor :show-status-bar t));;needs recreate image
 
 (defun igo-editor-toggle-move-number (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
-  (when editor
-    (igo-editor-toggle-property editor :show-move-number)
-    (igo-editor-update-image editor)))
+  (igo-editor-toggle-property-and-update-image
+   editor ::show-move-number))
 
 (defun igo-editor-toggle-branch-text (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
-  (when editor
-    (igo-editor-toggle-property editor :show-branches)
-    (igo-editor-update-image editor)))
+  (igo-editor-toggle-property-and-update-image
+   editor :show-branches))
 
 ;; Editor - Input on Image
 
