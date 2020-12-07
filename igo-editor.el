@@ -1264,10 +1264,10 @@
   (/ (* igo-ui-font-h (string-width text)) 2))
 
 (defun igo-ui-create-bar (svg bar-x bar-y board id)
-  (let* ((bar (svg-node svg 'g :class "ui-bar"))
+  (let* ((bar (svg-node svg 'g :class "ui-bar" :id id))
          (bar-w (igo-svg-board-pixel-w board))
          (bar-h igo-ui-bar-h))
-    (svg-rectangle bar bar-x bar-y bar-w bar-h :fill "#222" :id id)
+    (svg-rectangle bar bar-x bar-y bar-w bar-h :fill "#333")
     bar))
 
 (defun igo-ui-create-button (svg id pos text image-map)
