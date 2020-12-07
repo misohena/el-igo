@@ -475,21 +475,23 @@
     (when game
       ;; Create a new SVG Tree
       (when (or (null svg)
+                ;; Board size changed
                 (not (string= (igo-editor-board-size-attr board)
                               (dom-attr svg 'data-board-size))))
         (let* ((board-pixel-w (igo-svg-board-pixel-w board))
                (board-pixel-h (igo-svg-board-pixel-h board))
                (image-w board-pixel-w)
                (image-h (+ board-pixel-h igo-ui-bar-h)))
+          ;; New SVG Root
           (setq svg (svg-create image-w image-h))
           (dom-set-attribute svg 'data-board-size
                              (igo-editor-board-size-attr board))
           (igo-editor--svg-set editor svg)
+          ;; Clear clickable areas
+          (igo-editor-clear-image-map editor)
 
-          (igo-svg-board svg 0 0 board)
-
-          (igo-editor-init-image-map editor)
-
+          ;; Initialize SVG Parts
+          (igo-editor-create-svg-board editor svg board image-map)
           (igo-editor-create-navi-bar editor)))
 
       ;; Update intersections
@@ -517,19 +519,18 @@
         (overlay-put (igo-editor-overlay editor) 'display image)
         (igo-editor--image-set editor image)))))
 
-(defun igo-editor-init-image-map (editor)
-  (let ((board (igo-editor-board editor))
-        (image-map (igo-editor-image-map editor)))
+(defun igo-editor-clear-image-map (editor)
+  (setcar (igo-editor-image-map editor) nil))
 
-    (setcar image-map nil)
-
-    (igo-ui-push-clickable-rect
-     image-map
-     'igo-grid
-     (igo-grid-clickable-left board)
-     (igo-grid-clickable-top board)
-     (igo-grid-clickable-width board)
-     (igo-grid-clickable-height board))))
+(defun igo-editor-create-svg-board (editor svg board image-map)
+  (igo-svg-board svg 0 0 board)
+  (igo-ui-push-clickable-rect
+   image-map
+   'igo-grid
+   (igo-grid-clickable-left board)
+   (igo-grid-clickable-top board)
+   (igo-grid-clickable-width board)
+   (igo-grid-clickable-height board)))
 
 (defun igo-editor-update-branches-text (editor)
   (let* ((game (igo-editor-game editor))
@@ -765,7 +766,8 @@
         (board (igo-editor-board editor))
         (image-map (igo-editor-image-map editor)))
     (when (and svg board image-map)
-      (igo-editor-init-image-map editor)
+      (igo-ui-remove-clickable-areas-under image-map
+                                           (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-svg-board-pixel-h board))
              (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
@@ -933,7 +935,8 @@
         (board (igo-editor-board editor))
         (image-map (igo-editor-image-map editor)))
     (when (and svg board image-map)
-      (igo-editor-init-image-map editor)
+      (igo-ui-remove-clickable-areas-under image-map
+                                           (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-svg-board-pixel-h board))
              (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
@@ -1112,7 +1115,8 @@
         (board (igo-editor-board editor))
         (image-map (igo-editor-image-map editor)))
     (when (and svg board image-map)
-      (igo-editor-init-image-map editor)
+      (igo-ui-remove-clickable-areas-under image-map
+                                           (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-svg-board-pixel-h board))
              (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
@@ -1314,6 +1318,27 @@
          ;;@todo circle
          ;;@todo poly
          ))))
+
+(defun igo-ui-remove-clickable-area (image-map id)
+  ;; @todo Use cl-remove-if?
+  (let ((areas (car image-map))
+        prev)
+    (while (and areas (not (eq (cadr (car areas)) id)))
+      (setq prev areas)
+      (setq areas (cdr areas)))
+    (if areas
+        (if prev
+            (setcdr prev (cdr areas))
+          (setcar image-map (cdr areas)))))
+  image-map)
+
+(defun igo-ui-remove-clickable-areas-under (image-map dom-node)
+  "Remove all clickable areas from IMAGE-MAP that matches the id of children of DOM-NODE."
+  ;;@todo all children? all descendants?
+  (dolist (child (dom-children dom-node))
+    (let ((child-id (dom-attr child 'id)))
+      (if child-id
+          (igo-ui-remove-clickable-area image-map (intern child-id))))))
 
 (provide 'igo-editor)
 ;;; igo-editor.el ends here
