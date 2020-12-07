@@ -687,7 +687,7 @@
 (defun igo-editor-toggle-move-number (&optional editor)
   (interactive)
   (igo-editor-toggle-property-and-update-image
-   editor ::show-move-number))
+   editor :show-move-number))
 
 (defun igo-editor-toggle-branch-text (&optional editor)
   (interactive)
