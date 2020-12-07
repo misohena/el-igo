@@ -104,6 +104,8 @@
 
     (igo-editor-text-mode editor t)
 
+    (igo-editor-update editor)
+
     editor))
 
 ;; Editor - Basic Accessors

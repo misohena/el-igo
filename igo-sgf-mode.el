@@ -33,7 +33,6 @@
   (interactive)
 
   (setq-local igo-sgf-mode-editor (igo-editor (point-min) (point-max) nil nil t))
-  (igo-editor-update igo-sgf-mode-editor)
 
   ;;(use-local-map igo-sgf-mode-map)
   (setq-local mode-name "SGF(Go Game)")

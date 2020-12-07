@@ -65,15 +65,18 @@
   (if (and (< start end) (= (char-before end) ?\n))
       (setq end (1- end)))
 
-  ;;@todo ある場合と無い場合の処理を分ける。move-regionやupdateは既にある場合のみ実行する。igo-editorにはigo-editor-updateを含めるべき。
-  (let ((editor (or (seq-some (lambda (o) (overlay-get o 'igo-editor))
-                              (overlays-in start end))
-                    (igo-editor start end nil nil t))))
+  (let ((editor (seq-some
+                 (lambda (o) (overlay-get o 'igo-editor))
+                 (overlays-in start end))))
 
-    ;; Cover region.
-    (igo-editor-set-region editor start end)
-    ;; Update editor state from region text.
-    (igo-editor-update editor)
+    (if (null editor)
+        ;; Create a new editor
+        (setq editor (igo-editor start end nil nil t))
+      ;; Cover region.
+      (igo-editor-set-region editor start end)
+      ;; Update editor state from region text.
+      (igo-editor-update editor))
+
     ;; Highlight error place
     (if (igo-editor-last-error editor)
         (put-text-property (igo-editor-last-error-begin editor)
