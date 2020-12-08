@@ -605,7 +605,9 @@
              :x (+ igo-ui-bar-h (/ igo-ui-bar-h 8))
              :y text-y
              :font-family igo-ui-font-family :font-size igo-ui-font-h
-             :text-anchor "start" :fill "#fff" :id "status-prisoners-w"))
+             :text-anchor "start" :fill "#fff" :id "status-prisoners-w")
+          (let ((n (car (dom-by-id bar "status-prisoners-w"))))
+            (if n (dom-remove-node bar n))))
         (if (> w-prisoners 0)
             (svg-text
              bar
@@ -613,7 +615,9 @@
              :x (- board-pixel-w igo-ui-bar-h (/ igo-ui-bar-h 8))
              :y text-y
              :font-family igo-ui-font-family :font-size igo-ui-font-h
-             :text-anchor "end" :fill "#fff" :id "status-prisoners-b"))
+             :text-anchor "end" :fill "#fff" :id "status-prisoners-b")
+          (let ((n (car (dom-by-id bar "status-prisoners-b"))))
+            (if n (dom-remove-node bar n))))
         ;; Move Number
         (svg-text
          bar

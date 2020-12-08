@@ -554,19 +554,19 @@
      (igo-board-changes--make-undo-value
       #'eq (igo-board-changes-turn changes) (igo-board-turn board))
      (igo-board-changes--make-undo-integer-delta
-      (igo-board-changes-black-prisoners changes) (igo-board-get-prisoners board 'black))
+      (igo-board-changes-black-prisoners changes))
      (igo-board-changes--make-undo-integer-delta
-      (igo-board-changes-white-prisoners changes) (igo-board-get-prisoners board 'white)))))
+      (igo-board-changes-white-prisoners changes)))))
 
 (defun igo-board-changes--make-undo-value (func-eq new-value old-value)
   (if (and new-value
            (not (funcall func-eq new-value old-value)))
       old-value))
 
-(defun igo-board-changes--make-undo-integer-delta (new-value old-value)
-  (if (and new-value
-           (not (= new-value old-value)))
-      (- old-value new-value)))
+(defun igo-board-changes--make-undo-integer-delta (delta)
+  (if (and delta
+           (/= delta 0))
+      (- delta)))
 
 (defun igo-board-changes--make-undo-intersections (positions new-istate board colors-positions)
   ;; ensure list
