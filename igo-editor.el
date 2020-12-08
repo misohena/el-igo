@@ -175,6 +175,9 @@
     (if ov
         (overlay-put ov 'keymap keymap))))
 
+(defun igo-editor-self-insert-command ()
+  (interactive))
+
 (defvar igo-editor-text-mode-map
   (let ((km (make-sparse-keymap)))
     (define-key km (kbd "C-c q") #'igo-editor-quit)
@@ -263,29 +266,27 @@
     (define-key km "D" #'igo-editor-mark-edit-del)
     km))
 
-(defun igo-editor-self-insert-command ()
-  (interactive))
+(defvar igo-editor-main-menu-map
+  '(keymap "Main Menu"
+           (igo-editor-toggle-status-bar menu-item "Toggle Status Bar" igo-editor-toggle-status-bar :button (:toggle . (igo-editor-get-property (igo-editor-at) :show-status-bar)))
+           (igo-editor-toggle-move-number menu-item "Toggle Move Number" igo-editor-toggle-move-number :button (:toggle . (igo-editor-get-property (igo-editor-at) :show-move-number)))
+           (igo-editor-toggle-branch-text menu-item "Toggle Branch Text" igo-editor-toggle-branch-text :button (:toggle . (igo-editor-get-property (igo-editor-at) :show-branches)))
+           (sep-1 menu-item "--")
+           (igo-editor-quit menu-item "Quit" igo-editor-quit)
+           (sep-2 menu-item "--")
+           (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
+           (igo-editor-free-edit-mode menu-item "Free Edit" igo-editor-free-edit-mode)
+           (igo-editor-mark-edit-mode menu-item "Mark Edit" igo-editor-mark-edit-mode)
+           (igo-editor-edit-comment menu-item "Edit Comment" igo-editor-edit-comment)
+           ))
 
 (defun igo-editor-main-menu (&optional editor)
   (interactive)
   (if (null editor) (setq editor (igo-editor-at)))
   (if editor
-      (let ((fn (x-popup-menu
-                 last-input-event
-                 (list "Main Menu"
-                       (list ""
-                             (cons "Toggle Status Bar" (lambda () (igo-editor-toggle-status-bar editor)))
-                             (cons "Toggle Move Number" (lambda () (igo-editor-toggle-move-number editor)))
-                             (cons "Toggle Branch Text" (lambda () (igo-editor-toggle-branch-text editor)))
-                             (cons "Quit" (lambda () (igo-editor-quit editor)))
-                             (cons "Text Mode" (lambda () (igo-editor-text-mode editor)))
-                             (cons "Free Edit" (lambda () (igo-editor-free-edit-mode editor)))
-                             (cons "Mark Edit" (lambda () (igo-editor-mark-edit-mode editor)))
-                             ;;(cons "Marker Edit" igo-editor-marker-edit-mode)
-                             (cons "Edit Comment" (lambda () (igo-editor-edit-comment editor)))
-                             )))))
-        (if fn
-            (funcall fn)))))
+      (let ((fn (car (last (x-popup-menu last-input-event igo-editor-main-menu-map)))))
+        (if (and (symbolp fn) (fboundp fn))
+            (funcall fn editor)))))
 
 ;; Editor - Update Editor
 
