@@ -383,7 +383,7 @@
     (goto-char begin)
     (insert text)
     (delete-region (point) (+ (point) (- end begin)))
-    (if (/= (char-after) ?\n)
+    (if (equal (char-after) ?\n)
         (insert ?\n) )))
 
 ;; Editor - Error
