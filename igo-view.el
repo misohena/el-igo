@@ -28,53 +28,158 @@
 (require 'igo-model)
 
 ;;
-;; SVG Igo Board
+;; Board View
+;;
+
+;; Board View - Sizes
+
+(defcustom igo-board-view-size-max '(0.9 . 0.8)
+  "Maximum pixel size of boards.
+
+Specify an integer or a float or (width-int-or-float . height-int-or-float).
+
+If the value is an integer, it directly specifies the maximum
+board width and height.
+
+If the value is an floating point number, it specifies the
+maximum board width and height as a ratio to frame width and
+height.")
+
+(defcustom igo-board-view-grid-interval-default 32
+  "Default interval of grid lines.")
+(defcustom igo-board-view-grid-interval-min 10
+  "Minimum interval of grid lines.")
+
+(defun igo-board-view-size-max-spec (width-p)
+  "Extract width or height from igo-svg-max-board-size."
+  (let* ((spec igo-board-view-size-max)
+         (max-size
+          (cond
+           ((consp spec) (if width-p (car spec) (cdr spec)))
+           ((numberp spec))
+           (t 0.8))))
+    (if (floatp max-size)
+        (ceiling (* max-size (if width-p (frame-text-width) (frame-text-height))))
+      max-size)))
+
+;; Board View - Constructor
+
+(defun igo-board-view (board)
+  (let* ((w (igo-board-w board))
+         (h (igo-board-h board))
+         (max-w (igo-board-view-size-max-spec t))
+         (max-h (igo-board-view-size-max-spec nil))
+         (ave-interval-w (/ max-w (+ (1- w) 3))) ;; 3=margin*2
+         (ave-interval-h (/ max-h (+ (1- h) 3))) ;; 3=margin*2
+         (ave-interval (min ave-interval-w ave-interval-h))
+         (interval (max (min ave-interval igo-board-view-grid-interval-default)
+                        igo-board-view-grid-interval-min))
+         (margin (/ (* 3 interval) 2)) ;; 3=margin*2
+         (view (vector w h margin interval)))
+    view))
+
+;; Board View - Sizes
+
+(defun igo-board-view-w (view) (aref view 0))
+(defun igo-board-view-h (view) (aref view 1))
+(defun igo-board-view-margin (view) (aref view 2))
+(defun igo-board-view-interval (view) (aref view 3))
+
+(defun igo-board-view-pixel-w (view)
+  (+ (* 2 (igo-board-view-margin view))
+     (* (1- (igo-board-view-w view)) (igo-board-view-interval view))))
+(defun igo-board-view-pixel-h (view)
+  (+ (* 2 (igo-board-view-margin view))
+     (* (1- (igo-board-view-h view)) (igo-board-view-interval view))))
+
+(defun igo-board-view-clickable-left (view &optional x)
+  (+
+   (- (igo-board-view-margin view) (/ (igo-board-view-interval view) 2))
+   (or x 0)))
+(defun igo-board-view-clickable-top (view &optional y)
+  (+
+   (- (igo-board-view-margin view) (/ (igo-board-view-interval view) 2))
+   (or y 0)))
+(defun igo-board-view-clickable-width (view)
+  (* (igo-board-view-interval view) (igo-board-view-w view)))
+(defun igo-board-view-clickable-height (view)
+  (* (igo-board-view-interval view) (igo-board-view-h view)))
+
+(defun igo-board-view-to-grid-x (view x &optional board-left)
+  (/ (- x (igo-board-view-clickable-left view board-left))
+     (igo-board-view-interval view)))
+
+(defun igo-board-view-to-grid-y (view y &optional board-top)
+  (/ (- y (igo-board-view-clickable-top view board-top))
+     (igo-board-view-interval view)))
+
+
+;; Board View - Update
+
+(defun igo-board-view-create-board (view svg left top)
+  (igo-svg-board
+   svg left top
+   (igo-board-view-w view)
+   (igo-board-view-h view)
+   (igo-board-view-interval view)
+   (igo-board-view-margin view)))
+
+(defun igo-board-view-update-stones (view svg board)
+  (igo-svg-stones svg board (igo-board-view-interval view)))
+
+(defun igo-board-view-update-move-numbers (view svg visible game)
+  (if visible
+      (igo-svg-move-numbers svg
+                            (igo-game-board game)
+                            (igo-board-view-interval view)
+                            (igo-game-current-node game))
+    (igo-svg-remove-move-numbers svg)))
+
+(defun igo-board-view-update-branches (view svg visible board node
+                                            &optional fun-pass fun-resign fun-setup)
+  (if visible
+      (igo-svg-branches
+       svg
+       board
+       (igo-board-view-interval view)
+       node
+       fun-pass fun-resign fun-setup)
+    (igo-svg-remove-branches svg)))
+
+(defun igo-board-view-update-last-move-mark (view svg visible game)
+  (if visible
+      (igo-svg-last-move svg game (igo-board-view-interval view))
+    (igo-svg-remove-last-move svg)))
+
+(defun igo-board-view-update-marks (view svg visible game)
+  (if visible
+      (igo-svg-marks
+       svg
+       (igo-game-board game)
+       (igo-board-view-interval view)
+       (igo-node-get-marks-property (igo-game-current-node game)))
+    (igo-svg-remove-marks)))
+
+
+
+
+;;
+;; SVG Board
 ;;
 
 ;; Board
 
-(defun igo-grid-interval (board) 32)
-(defun igo-grid-margin (board) 50)
-
-(defun igo-grid-clickable-left (board)
-  (- (igo-grid-margin board) (/ (igo-grid-interval board) 2)))
-(defun igo-grid-clickable-top (board)
-  (- (igo-grid-margin board) (/ (igo-grid-interval board) 2)))
-(defun igo-grid-clickable-width (board)
-  (* (igo-grid-interval board) (igo-board-w board)))
-(defun igo-grid-clickable-height (board)
-  (* (igo-grid-interval board) (igo-board-h board)))
-
-(defun igo-svg-board-pixel-w (board)
-  (let ((w (igo-board-w board)))
-    (+ (* 2 (igo-grid-margin board)) (* (1- w) (igo-grid-interval board)))))
-(defun igo-svg-board-pixel-h (board)
-  (let ((h (igo-board-h board)))
-    (+ (* 2 (igo-grid-margin board)) (* (1- h) (igo-grid-interval board)))))
-
-(defun igo-svg-from-board (board)
-  (let ((svg (svg-create
-              (igo-svg-board-pixel-w board)
-              (igo-svg-board-pixel-h board))))
-    (igo-svg-board svg 0 0 board)
-    (igo-svg-stones svg board)
-    svg))
-
-(defun igo-svg-board (svg pixel-x pixel-y board)
-  (let* ((grid-interval (igo-grid-interval board))
-         (grid-margin (igo-grid-margin board))
-         (w (igo-board-w board))
-         (h (igo-board-h board))
-         (pixel-w (igo-svg-board-pixel-w board))
-         (pixel-h (igo-svg-board-pixel-h board))
+(defun igo-svg-board (svg left top w h grid-interval grid-margin)
+  (let* ((pixel-w (+ (* 2 grid-margin) (* grid-interval (1- w))))
+         (pixel-h (+ (* 2 grid-margin) (* grid-interval (1- h))))
          (line-w 1)
          (star-radius 2.5)
          ;; Board Root
          (svg-board-root (svg-node svg 'g
                                    :class "board"
                                    :transform (format "translate(%s %s)"
-                                                      pixel-x
-                                                      pixel-y)))
+                                                      left
+                                                      top)))
          ;; Board Rect
          (svg-board-rect (svg-rectangle svg-board-root 0 0 pixel-w pixel-h :fill "#e3aa4e"))
          ;; Game Area
@@ -140,9 +245,8 @@
    :cx 0.5 :cy 0.5 :fx 0.7 :fy 0.3 :r 0.6)
   svg)
 
-(defun igo-svg-stone (svg x y color board)
-  (let* ((grid-interval (igo-grid-interval board))
-         (cx (* x grid-interval))
+(defun igo-svg-stone (svg x y color grid-interval)
+  (let* ((cx (* x grid-interval))
          (cy (* y grid-interval))
          (r (* grid-interval 0.98 0.5
                (/ (if (igo-white-p color) 21.9 22.2) 22.2)))) ;; diameter of white stone is 21.9mm
@@ -159,7 +263,7 @@
 (defun igo-svg-shadow-id (x y) (format "shadow-%s-%s" x y))
 (defun igo-svg-move-number-id (x y) (format "mvnum-%s-%s" x y))
 
-(defun igo-svg-stones (svg board)
+(defun igo-svg-stones (svg board grid-interval)
   (loop for pos to (1- (igo-board-intersection-count board)) do
         (let ((x (igo-board-pos-to-x board pos))
               (y (igo-board-pos-to-y board pos)))
@@ -167,7 +271,7 @@
               (progn
                 (svg-remove svg (igo-svg-stone-id x y))
                 (svg-remove svg (igo-svg-shadow-id x y)))
-            (igo-svg-stone svg x y (igo-board-get-at board pos) board)))))
+            (igo-svg-stone svg x y (igo-board-get-at board pos) grid-interval)))))
 
 ;; Text
 
@@ -176,14 +280,13 @@
 (defvar igo-svg-font-baseline-shift "-40%")
 (defvar igo-svg-font-size-scale 0.52)
 
-(defun igo-svg-font-size-on-board (board &optional scale)
-  "Calculate font size on BOARD."
-  (ceiling (* (igo-grid-interval board)
+(defun igo-svg-font-size-on-board (grid-interval &optional scale)
+  "Calculate font size."
+  (ceiling (* grid-interval
               (or scale igo-svg-font-size-scale))))
 
-(defun igo-svg-text-on-board (svg center-x center-y board text text-color &optional attributes font-size-scale)
-  (let* ((grid-interval (igo-grid-interval board))
-         (font-size (igo-svg-font-size-on-board board font-size-scale))
+(defun igo-svg-text-on-board (svg center-x center-y grid-interval text text-color &optional attributes font-size-scale)
+  (let* ((font-size (igo-svg-font-size-on-board grid-interval font-size-scale))
          (text-w (string-width text)))
     ;; Shrink width
     (if (>= text-w 3)
@@ -206,15 +309,14 @@
            :baseline-shift igo-svg-font-baseline-shift
            attributes)))
 
-(defun igo-svg-text-at-intersection (svg x y board text text-color &optional attributes font-size-scale)
-  (let ((grid-interval (igo-grid-interval board)))
-    (igo-svg-text-on-board
-     svg
-     (* x grid-interval)
-     (* y grid-interval)
-     board
-     text text-color
-     attributes font-size-scale)))
+(defun igo-svg-text-at-intersection (svg x y grid-interval text text-color &optional attributes font-size-scale)
+  (igo-svg-text-on-board
+   svg
+   (* x grid-interval)
+   (* y grid-interval)
+   grid-interval
+   text text-color
+   attributes font-size-scale))
 
 ;; Move Number
 
@@ -227,16 +329,16 @@
     ((igo-black-p move-color "#000"))
     ((igo-white-p move-color "#fff")))))
 
-(defun igo-svg-move-number (svg x y board num text-color)
+(defun igo-svg-move-number (svg x y grid-interval num text-color)
   (igo-svg-text-at-intersection
    (igo-svg-move-numbers-group svg)
-   x y board
+   x y grid-interval
    (number-to-string num)
    text-color
    (list :id (igo-svg-move-number-id x y)
          :class "mvnum")))
 
-(defun igo-svg-move-numbers (svg board current-node)
+(defun igo-svg-move-numbers (svg board grid-interval current-node)
   (igo-svg-remove-move-numbers svg)
 
   (let ((numbered (make-vector (igo-board-intersection-count board) nil))
@@ -260,7 +362,7 @@
                              ;; emtpy
                              ((igo-white-p (igo-node-color node)) "#fff")
                              (t "#000"))))
-                (igo-svg-move-number svg x y board move-number color)))))
+                (igo-svg-move-number svg x y grid-interval move-number color)))))
       ;; previous node
       (if (igo-node-move-p node)
           (setq move-number (1- move-number)))
@@ -273,7 +375,7 @@
 
 ;; Branchs(Next Nodes) Text
 
-(defun igo-svg-branches (svg board node &optional fun-pass fun-resign fun-setup)
+(defun igo-svg-branches (svg board grid-interval node &optional fun-pass fun-resign fun-setup)
   ;; Remove old text
   (igo-svg-remove-branches svg)
 
@@ -292,7 +394,7 @@
            (igo-svg-overlays-group svg)
            (igo-board-pos-to-x board (igo-node-move next))
            (igo-board-pos-to-y board (igo-node-move next))
-           board text text-color (list :class class-name)))
+           grid-interval text text-color (list :class class-name)))
          ((igo-node-pass-p next)
           (if (functionp fun-pass)
               (funcall fun-pass branch-index num-next-nodes text text-color turn class-name)))
@@ -311,7 +413,7 @@
 
 ;; Last Move Mark
 
-(defun igo-svg-last-move (svg game)
+(defun igo-svg-last-move (svg game grid-interval)
   (igo-svg-remove-last-move svg)
 
   (let* ((curr-node (igo-game-current-node game))
@@ -320,7 +422,6 @@
         (let* ((board (igo-game-board game))
                (x (igo-board-pos-to-x board move))
                (y (igo-board-pos-to-y board move))
-               (grid-interval (igo-grid-interval board))
                (cx (* x grid-interval))
                (cy (* y grid-interval))
                (r (ceiling (* grid-interval 0.15)))
@@ -352,9 +453,8 @@
      ((igo-white-p istate) "#000")
      (t "#fff"))))
 
-(defun igo-svg-cross-mark (svg x y mark-color board)
-  (let* ((grid-interval (igo-grid-interval board))
-         (cx (* x grid-interval))
+(defun igo-svg-cross-mark (svg x y mark-color board grid-interval)
+  (let* ((cx (* x grid-interval))
          (cy (* y grid-interval))
          (r (* 0.25 grid-interval)))
     (svg-path
@@ -368,21 +468,19 @@
      :fill "none"
      :class "mark")))
 
-(defun igo-svg-circle-mark (svg x y mark-color board)
-  (let ((grid-interval (igo-grid-interval board)))
-    (svg-circle
-     svg
-     (* x grid-interval)
-     (* y grid-interval)
-     (* 0.3 grid-interval)
-     :stroke-width 3
-     :stroke (or mark-color (igo-svg-intersection-text-color board x y))
-     :fill "none"
-     :class "mark")))
+(defun igo-svg-circle-mark (svg x y mark-color board grid-interval)
+  (svg-circle
+   svg
+   (* x grid-interval)
+   (* y grid-interval)
+   (* 0.3 grid-interval)
+   :stroke-width 3
+   :stroke (or mark-color (igo-svg-intersection-text-color board x y))
+   :fill "none"
+   :class "mark"))
 
-(defun igo-svg-square-mark (svg x y mark-color board)
-  (let* ((grid-interval (igo-grid-interval board))
-         (r (* 0.25 grid-interval)))
+(defun igo-svg-square-mark (svg x y mark-color board grid-interval)
+  (let* ((r (* 0.25 grid-interval)))
     (svg-rectangle
      svg
      (- (* x grid-interval) r)
@@ -394,9 +492,8 @@
      :fill "none"
      :class "mark")))
 
-(defun igo-svg-triangle-mark (svg x y mark-color board)
-  (let* ((grid-interval (igo-grid-interval board))
-         (cx (* x grid-interval))
+(defun igo-svg-triangle-mark (svg x y mark-color board grid-interval)
+  (let* ((cx (* x grid-interval))
          (cy (* y grid-interval))
          (r (* 0.3 grid-interval))
          (rt3 (sqrt 3)))
@@ -410,7 +507,7 @@
      :fill "none"
      :class "mark")))
 
-(defun igo-svg-marks (svg board marks)
+(defun igo-svg-marks (svg board grid-interval marks)
   (igo-svg-remove-marks svg)
 
   (dolist (mark marks)
@@ -421,12 +518,12 @@
            (y (igo-board-pos-to-y board pos))
            (parent (igo-svg-overlays-group svg)))
       (cond
-       ((eq type 'cross) (igo-svg-cross-mark parent x y nil board))
-       ((eq type 'circle) (igo-svg-circle-mark parent x y nil board))
-       ((eq type 'square) (igo-svg-square-mark parent x y nil board))
-       ((eq type 'triangle) (igo-svg-triangle-mark parent x y nil board))
+       ((eq type 'cross) (igo-svg-cross-mark parent x y nil board grid-interval))
+       ((eq type 'circle) (igo-svg-circle-mark parent x y nil board grid-interval))
+       ((eq type 'square) (igo-svg-square-mark parent x y nil board grid-interval))
+       ((eq type 'triangle) (igo-svg-triangle-mark parent x y nil board grid-interval))
        ((eq type 'text) (igo-svg-text-at-intersection
-                         parent x y board
+                         parent x y grid-interval
                          (igo-mark-text mark)
                          (igo-svg-intersection-text-color board x y)
                          '(:class "mark")))

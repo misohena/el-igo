@@ -83,20 +83,21 @@
          (editor (vector
                   ov ;;0:overlay
                   nil ;;1:game
-                  nil ;;2:svg
-                  (list nil) ;;3:image-map
-                  nil ;;4:image
-                  nil ;;5:buffer text last updated (see: update-buffer-text)
-                  nil ;;6:last error
-                  nil ;;7:text mode
-                  nil ;;8:current mode
+                  nil ;;2:board-view
+                  nil ;;3:svg
+                  (list nil) ;;4:image-map
+                  nil ;;5:image
+                  nil ;;6:buffer text last updated (see: update-buffer-text)
+                  nil ;;7:last error
+                  nil ;;8:text mode
+                  nil ;;9:current mode
                   (list
                    :show-status-bar igo-editor-status-bar-visible
                    :show-branches t
                    :show-move-number nil
                    :show-last-move t
                    ;;:rotate180 nil
-                   ) ;;9:properties
+                   ) ;;10:properties
                   )))
     ;;(message "make overlay %s" ov)
     (overlay-put ov 'igo-editor editor)
@@ -112,25 +113,27 @@
 
 (defun igo-editor-overlay (editor) (aref editor 0))
 (defun igo-editor-game (editor) (aref editor 1))
-(defun igo-editor-svg (editor) (aref editor 2))
-(defun igo-editor-image-map (editor) (aref editor 3))
-(defun igo-editor-image (editor) (aref editor 4))
-(defun igo-editor-last-buffer-text (editor) (aref editor 5))
-(defun igo-editor-last-error (editor) (aref editor 6))
-(defun igo-editor-display-mode (editor) (aref editor 7))
-(defun igo-editor-curr-mode (editor) (aref editor 8))
-(defun igo-editor-properties (editor) (aref editor 9))
+(defun igo-editor-board-view (editor) (aref editor 2))
+(defun igo-editor-svg (editor) (aref editor 3))
+(defun igo-editor-image-map (editor) (aref editor 4))
+(defun igo-editor-image (editor) (aref editor 5))
+(defun igo-editor-last-buffer-text (editor) (aref editor 6))
+(defun igo-editor-last-error (editor) (aref editor 7))
+(defun igo-editor-display-mode (editor) (aref editor 8))
+(defun igo-editor-curr-mode (editor) (aref editor 9))
+(defun igo-editor-properties (editor) (aref editor 10))
 
 ;;(defun igo-editor--overlay-set (editor ov) (aset editor 0 ov))
 (defun igo-editor--game-set (editor game) (aset editor 1 game))
-(defun igo-editor--svg-set (editor svg) (aset editor 2 svg))
-;;(defun igo-editor--image-map-set (editor image) (aset editor 3 image))
-(defun igo-editor--image-set (editor image) (aset editor 4 image))
-(defun igo-editor--last-buffer-text-set (editor text) (aset editor 5 text))
-(defun igo-editor--last-error-set (editor err) (aset editor 6 err))
-(defun igo-editor--display-mode-set (editor dmode) (aset editor 7 dmode))
-(defun igo-editor--curr-mode-set (editor mode) (aset editor 8 mode))
-(defun igo-editor--properties-set (editor props) (aset editor 9 props))
+(defun igo-editor--board-view-set (editor view) (aset editor 2 view))
+(defun igo-editor--svg-set (editor svg) (aset editor 3 svg))
+;;(defun igo-editor--image-map-set (editor image) (aset editor 4 image))
+(defun igo-editor--image-set (editor image) (aset editor 5 image))
+(defun igo-editor--last-buffer-text-set (editor text) (aset editor 6 text))
+(defun igo-editor--last-error-set (editor err) (aset editor 7 err))
+(defun igo-editor--display-mode-set (editor dmode) (aset editor 8 dmode))
+(defun igo-editor--curr-mode-set (editor mode) (aset editor 9 mode))
+(defun igo-editor--properties-set (editor props) (aset editor 10 props))
 
 (defun igo-editor-begin (editor) (overlay-start (igo-editor-overlay editor)))
 (defun igo-editor-end (editor) (overlay-end (igo-editor-overlay editor)))
@@ -481,15 +484,18 @@
       igo-ui-bar-h 0))
 (defun igo-editor-main-bar-top (editor)
   (+ (igo-editor-board-top editor)
-     (igo-svg-board-pixel-h (igo-editor-board editor))))
+     (igo-board-view-pixel-h (igo-editor-board-view editor))))
 (defun igo-editor-image-h (editor)
   (+ (igo-editor-main-bar-top editor)
      igo-ui-bar-h))
+(defun igo-editor-image-w (editor)
+  (igo-board-view-pixel-w (igo-editor-board-view editor)))
 
 (defun igo-editor-update-image (editor &optional recreate)
   "Update svg, image, overlay from game model."
   (let ((game (igo-editor-game editor))
         (board (igo-editor-board editor))
+        (board-view (igo-editor-board-view editor))
         (svg (igo-editor-svg editor))
         (image-map (igo-editor-image-map editor)))
     (when game
@@ -499,47 +505,46 @@
                 ;; Board size changed
                 (not (string= (igo-editor-board-size-attr board)
                               (dom-attr svg 'data-board-size))))
-        (let* ((board-pixel-w (igo-svg-board-pixel-w board))
-               (board-pixel-h (igo-svg-board-pixel-h board))
-               (image-w board-pixel-w)
-               (image-h (igo-editor-image-h editor)))
-          ;; New SVG Root
-          (setq svg (svg-create image-w image-h))
-          (dom-set-attribute svg 'data-board-size
-                             (igo-editor-board-size-attr board))
-          (igo-editor--svg-set editor svg)
-          ;; Clear clickable areas
-          (igo-editor-clear-image-map editor)
+        ;; New Board View (Determine grid interval and board pixel sizes)
+        (setq board-view (igo-board-view board))
+        (igo-editor--board-view-set editor board-view)
 
-          ;; Initialize SVG Parts
-          (if (igo-editor-get-property editor :show-status-bar)
-              (igo-editor-create-status-bar editor svg board))
-          (igo-editor-create-svg-board editor svg board image-map)
-          (igo-editor-create-navi-bar editor)))
+        ;; New SVG Root
+        (setq svg (svg-create (igo-editor-image-w editor)
+                              (igo-editor-image-h editor)))
+        (dom-set-attribute svg 'data-board-size
+                           (igo-editor-board-size-attr board))
+        (igo-editor--svg-set editor svg)
+        ;; Clear clickable areas
+        (igo-editor-clear-image-map editor)
+
+        ;; Initialize SVG Parts
+        (if (igo-editor-get-property editor :show-status-bar)
+            (igo-editor-create-status-bar editor svg board))
+        (igo-editor-create-svg-board editor svg board-view image-map)
+        (igo-editor-create-navi-bar editor))
 
       ;; Update game status
       (if (igo-editor-get-property editor :show-status-bar)
           (igo-editor-update-status-bar editor svg board game))
 
       ;; Update intersections
-      (igo-svg-stones svg board)
+      (igo-board-view-update-stones board-view svg board)
 
-      (if (igo-editor-get-property editor :show-move-number)
-          (igo-svg-move-numbers svg board (igo-game-current-node game))
-        (igo-svg-remove-move-numbers svg))
+      (igo-board-view-update-move-numbers
+       board-view svg
+       (igo-editor-get-property editor :show-move-number)
+       game)
 
-      (if (igo-editor-get-property editor :show-branches)
-          (igo-editor-update-branches-text editor)
-        (igo-svg-remove-branches svg))
+      (igo-editor-update-branches-text editor)
 
-      (if (and (igo-editor-get-property editor :show-last-move)
-               (not (igo-editor-get-property editor :show-move-number)))
-          (igo-svg-last-move svg game)
-        (igo-svg-remove-last-move svg))
+      (igo-board-view-update-last-move-mark
+       board-view svg
+       (and (igo-editor-get-property editor :show-last-move)
+            (not (igo-editor-get-property editor :show-move-number)))
+       game)
 
-      (igo-svg-marks
-       svg board
-       (igo-node-get-marks-property (igo-game-current-node game)))
+      (igo-board-view-update-marks board-view svg t game)
 
       ;; Update image descriptor & display property
       (let ((image (svg-image svg :map (car image-map))))
@@ -549,24 +554,25 @@
 (defun igo-editor-clear-image-map (editor)
   (setcar (igo-editor-image-map editor) nil))
 
-(defun igo-editor-create-svg-board (editor svg board image-map)
-  (igo-svg-board svg 0 (igo-editor-board-top editor) board)
+(defun igo-editor-create-svg-board (editor svg board-view image-map)
+  (igo-board-view-create-board board-view svg 0 (igo-editor-board-top editor))
   (igo-ui-push-clickable-rect
    image-map
    'igo-grid
-   (igo-grid-clickable-left board)
-   (+ (igo-grid-clickable-top board) (igo-editor-board-top editor))
-   (igo-grid-clickable-width board)
-   (igo-grid-clickable-height board)))
+   (igo-board-view-clickable-left board-view)
+   (igo-board-view-clickable-top board-view (igo-editor-board-top editor))
+   (igo-board-view-clickable-width board-view)
+   (igo-board-view-clickable-height board-view)))
 
 (defun igo-editor-create-status-bar (editor svg board)
   (let ((bar (igo-ui-create-bar svg
                                 0
                                 (igo-editor-status-bar-top editor)
-                                board "status-bar")))
+                                (igo-editor-image-w editor)
+                                "status-bar")))
     (svg-circle
      bar
-     (- (igo-svg-board-pixel-w board) (/ igo-ui-bar-h 2))
+     (- (igo-editor-image-w editor) (/ igo-ui-bar-h 2))
      (/ igo-ui-bar-h 2)
      (/ (* 3 igo-ui-bar-h) 10)
      :gradient "stone-black"
@@ -583,7 +589,7 @@
 (defun igo-editor-update-status-bar (editor svg board game)
   (let ((bar (car (dom-by-id svg "^status-bar$"))))
     (when bar
-      (let* ((board-pixel-w (igo-svg-board-pixel-w board))
+      (let* ((board-pixel-w (igo-editor-image-w editor))
              (bar-y 0)
              (turn-line-h 4)
              (text-y (+ bar-y (/ (- igo-ui-bar-h igo-ui-font-h) 2) igo-ui-font-ascent))
@@ -631,20 +637,25 @@
 (defun igo-editor-update-branches-text (editor)
   (let* ((game (igo-editor-game editor))
          (board (igo-game-board game))
+         (board-view (igo-editor-board-view editor))
          (svg (igo-editor-svg editor))
          (image-map (igo-editor-image-map editor))
          (curr-node (igo-game-current-node game)))
-
-    (igo-svg-branches
-     svg board curr-node
+    (igo-board-view-update-branches
+     board-view
+     svg
+     (igo-editor-get-property editor :show-branches)
+     board curr-node
+     ;; called when branch is pass
      (lambda (index num-nodes text text-color turn class-name)
        (igo-editor-put-branch-text-on-button
-        svg image-map board 'igo-editor-pass text text-color turn class-name)))))
+        svg image-map board-view 'igo-editor-pass text text-color turn class-name)))))
 
-(defun igo-editor-put-branch-text-on-button (svg image-map board button-id text text-color turn class-name)
+(defun igo-editor-put-branch-text-on-button (svg image-map board-view button-id text text-color turn class-name)
   (let ((xy (igo-ui-left-top-of-clickable-area image-map button-id)))
     (if xy
-        (let* ((font-size (igo-svg-font-size-on-board board))
+        (let* ((grid-interval (igo-board-view-interval board-view))
+               (font-size (igo-svg-font-size-on-board grid-interval))
                (x (+ (car xy) (/ font-size 2)))
                (y (cdr xy))
                (group (svg-node svg 'g :class class-name)))
@@ -653,7 +664,7 @@
                          (- y (/ font-size 2))
                          font-size font-size
                          :fill (if (igo-black-p turn) "#ccc" "#444"))
-          (igo-svg-text-on-board group x y board text text-color)))))
+          (igo-svg-text-on-board group x y grid-interval text text-color)))))
 
 
 (defun igo-editor-set-property-and-update-image
@@ -703,15 +714,16 @@
 (defun igo-editor-last-input-event-as-intersection-click (&optional editor)
   (if (null editor) (setq editor (igo-editor-at)))
   (if editor
-      (let ((game (igo-editor-game editor)))
+      (let ((game (igo-editor-game editor))
+            (board-view (igo-editor-board-view editor)))
         (if (and game
+                 board-view
                  (mouse-event-p last-input-event))
             (let* ((board (igo-game-board game))
                    (xy (posn-object-x-y (event-start last-input-event)))
-                   (x (/ (- (car xy) (igo-grid-clickable-left board))
-                         (igo-grid-interval board)))
-                   (y (/ (- (cdr xy) (+ (igo-grid-clickable-top board) (igo-editor-board-top editor)))
-                         (igo-grid-interval board))))
+                   (x (igo-board-view-to-grid-x board-view (car xy)))
+                   (y (igo-board-view-to-grid-y board-view (cdr xy)
+                                                (igo-editor-board-top editor))))
 
               (when (and (>= x 0)
                          (>= y 0)
@@ -894,7 +906,8 @@
       (igo-ui-remove-clickable-areas-under image-map
                                            (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-editor-main-bar-top editor))
-             (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
+             (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-image-w editor)
+                                     "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
         (igo-ui-create-button bar 'igo-editor-menu pos "Menu" image-map)
         (igo-ui-create-button bar 'igo-editor-first pos "|<" image-map)
@@ -1010,7 +1023,6 @@
                 (message "Put at %s %s"
                          (1+ (igo-board-pos-to-x (igo-game-board game) pos))
                          (1+ (igo-board-pos-to-y (igo-game-board game) pos))))
-            ;;(igo-svg-stone svg x y 'black)
             (igo-editor-update-on-modified editor))
         (message "Ilegal move."))
       )))
@@ -1025,7 +1037,6 @@
           (progn
             (message "Pass")
             (igo-editor-show-comment editor)
-            ;;(igo-svg-stone svg x y 'black)
             (igo-editor-update-on-modified editor))
         (message "ilegal move."))
       )))
@@ -1063,7 +1074,8 @@
       (igo-ui-remove-clickable-areas-under image-map
                                            (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-editor-main-bar-top editor))
-             (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
+             (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-image-w editor)
+                                     "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
         (igo-ui-create-button bar 'igo-editor-free-edit-quit pos "Quit" image-map)
         (igo-ui-create-button bar 'igo-editor-free-edit-black pos "Black" image-map)
@@ -1243,7 +1255,8 @@
       (igo-ui-remove-clickable-areas-under image-map
                                            (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-editor-main-bar-top editor))
-             (bar (igo-ui-create-bar svg 0 bar-y board "main-bar"))
+             (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-image-w editor)
+                                     "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
         (igo-ui-create-button bar 'igo-editor-mark-edit-quit pos "Quit" image-map)
         (igo-ui-create-button bar 'igo-editor-mark-edit-cross pos "X" image-map)
@@ -1392,9 +1405,8 @@
 (defun igo-ui-text-width (text)
   (/ (* igo-ui-font-h (string-width text)) 2))
 
-(defun igo-ui-create-bar (svg bar-x bar-y board id)
+(defun igo-ui-create-bar (svg bar-x bar-y bar-w id)
   (let* ((bar (svg-node svg 'g :class "ui-bar" :id id))
-         (bar-w (igo-svg-board-pixel-w board))
          (bar-h igo-ui-bar-h))
     (svg-rectangle bar bar-x bar-y bar-w bar-h :fill "#333")
     bar))
