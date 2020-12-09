@@ -95,6 +95,10 @@
         (igo-editor-set-move-number-visible editor (igo-org-opt-bool (cdr opt))))
        ((eq (car opt) :branch-text)
         (igo-editor-set-branch-text-visible editor (igo-org-opt-bool (cdr opt))))
+       ((eq (car opt) :editable)
+        (igo-editor-set-editable editor (igo-org-opt-bool (cdr opt))))
+       ((eq (car opt) :read-only)
+        (igo-editor-set-editable editor (not (igo-org-opt-bool (cdr opt)))))
        ))
     editor))
 

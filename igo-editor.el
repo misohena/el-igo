@@ -98,6 +98,7 @@
                    :show-move-number nil
                    :show-last-move t
                    ;;:rotate180 nil
+                   :editable t
                    ) ;;11:properties
                   )))
     ;;(message "make overlay %s" ov)
@@ -160,10 +161,11 @@
       (plist-get (igo-editor-properties editor) key)))
 
 (defun igo-editor-set-property (editor key value)
-  (if editor
-      (igo-editor--properties-set
-       editor
-       (plist-put (igo-editor-properties editor) key value))))
+  (when editor
+    (igo-editor--properties-set
+     editor
+     (plist-put (igo-editor-properties editor) key value))
+    value))
 
 (defun igo-editor-toggle-property (editor key)
   (igo-editor-set-property
@@ -192,6 +194,7 @@
   (let ((km (make-sparse-keymap)))
     (define-key km [remap self-insert-command] #'igo-editor-self-insert-command)
     (define-key km (kbd "C-c q") #'igo-editor-quit)
+    (define-key km (kbd "C-x C-q") #'igo-editor-toggle-editable)
     ;; display mode
     (define-key km "t" #'igo-editor-text-mode)
     (define-key km (kbd "C-c g") #'igo-editor-text-mode)
@@ -277,6 +280,7 @@
            (sep-1 menu-item "--")
            (igo-editor-quit menu-item "Quit" igo-editor-quit)
            (sep-2 menu-item "--")
+           (igo-editor-toggle-editable menu-item "Editable" igo-editor-toggle-editable :button (:toggle . (igo-editor-get-property (igo-editor-at) :editable)))
            (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
            (igo-editor-free-edit-mode menu-item "Free Edit" igo-editor-free-edit-mode)
            (igo-editor-mark-edit-mode menu-item "Mark Edit" igo-editor-mark-edit-mode)
@@ -849,6 +853,22 @@
   (igo-editor-update-image editor)
   (igo-editor-update-buffer-text editor))
 
+
+(defun igo-editor-editable-p (editor &optional show-message-p)
+  (let ((editable (igo-editor-get-property editor :editable)))
+    (if (and (not editable) show-message-p)
+        (message "Board is read only."))
+    editable))
+
+(defun igo-editor-set-editable (editor editable)
+  (igo-editor-set-property editor :editable editable))
+
+(defun igo-editor-toggle-editable (&optional editor)
+  (interactive)
+  (if (igo-editor-toggle-property (or editor (igo-editor-at)) :editable)
+      (message "Editable")
+    (message "Read only")))
+
 ;; Editor - Editing Mode
 
 (defconst igo-editor-mode-idx-start 0)
@@ -975,19 +995,24 @@
                     ("Branch"
                      ("Put Here" .
                       ,(lambda ()
-                         (igo-game-apply-node (igo-editor-game editor) clicked-node)))
+                         (if (igo-game-apply-node (igo-editor-game editor) clicked-node)
+                             (igo-editor-update-image editor))))
                      ("Delete This Branch" .
                       ,(lambda ()
-                         (igo-node-delete-next curr-node clicked-node)
-                         t))
+                         (when (igo-editor-editable-p editor t)
+                           (igo-node-delete-next curr-node clicked-node)
+                           (igo-editor-update-on-modified editor))))
                      ("Change Order to Previous" .
                       ,(lambda ()
-                         (igo-node-change-next-node-order curr-node clicked-node -1)))
+                         (when (igo-editor-editable-p editor t)
+                           (if (igo-node-change-next-node-order curr-node clicked-node -1)
+                               (igo-editor-update-on-modified editor)))))
                      ("Change Order to Next" .
                       ,(lambda ()
-                         (igo-node-change-next-node-order curr-node clicked-node 1))))))))
-        (when (and fun (funcall fun))
-          (igo-editor-update-on-modified editor)))))
+                         (when (igo-editor-editable-p editor t)
+                           (if (igo-node-change-next-node-order curr-node clicked-node 1)
+                               (igo-editor-update-on-modified editor))))))))))
+        (and fun (funcall fun)))))
 
 (defun igo-editor-put-stone (editor pos)
   (interactive
@@ -1036,15 +1061,18 @@
       ;; put stone to game object
       ;;    (if (igo-editor-set-intersection-setup-at editor pos 'black)
 
-      (if (igo-game-put-stone game pos)
-          (progn
-            (if (not (igo-editor-show-comment editor))
-                (message "Put at %s %s"
-                         (1+ (igo-board-pos-to-x (igo-game-board game) pos))
-                         (1+ (igo-board-pos-to-y (igo-game-board game) pos))))
-            (igo-editor-update-on-modified editor))
-        (message "Ilegal move."))
-      )))
+      (if (or (igo-editor-editable-p editor t)
+              (igo-node-find-next-by-move (igo-game-current-node game) pos))
+          (if (igo-game-put-stone game pos)
+              (progn
+                (if (not (igo-editor-show-comment editor))
+                    (message "Put at %s %s"
+                             (1+ (igo-board-pos-to-x (igo-game-board game) pos))
+                             (1+ (igo-board-pos-to-y (igo-game-board game) pos))))
+                (if (igo-editor-editable-p editor)
+                    (igo-editor-update-on-modified editor)
+                  (igo-editor-update-image editor)))
+            (message "Ilegal move."))))))
 
 (defun igo-editor-pass (&optional editor)
   (interactive)
@@ -1052,13 +1080,16 @@
 
   (when editor
     (let* ((game (igo-editor-game editor)))
-      (if (igo-game-pass game)
-          (progn
-            (message "Pass")
-            (igo-editor-show-comment editor)
-            (igo-editor-update-on-modified editor))
-        (message "ilegal move."))
-      )))
+      (if (or (igo-editor-editable-p editor t)
+              (igo-node-find-next-by-move (igo-game-current-node game) igo-pass))
+          (if (igo-game-pass game)
+              (progn
+                (message "Pass")
+                (igo-editor-show-comment editor)
+                (if (igo-editor-editable-p editor)
+                    (igo-editor-update-on-modified editor)
+                  (igo-editor-update-image editor)))
+            (message "ilegal move."))))))
 
 ;; Editor - Free Edit Mode
 
@@ -1128,14 +1159,15 @@
                (pos (plist-get ev :pos))
                (game (igo-editor-game editor)))
           (if game
-              (igo-editor-edit-intersection editor pos))))))
+              (igo-editor-free-edit-intersection-click editor pos))))))
 
-(defun igo-editor-edit-intersection (editor pos)
-  (if (igo-editor-set-intersection-setup-at
-       editor pos
-       (igo-editor-get-mode-property editor :istate))
-      (igo-editor-update-on-modified editor)
-    (message "not changed")))
+(defun igo-editor-free-edit-intersection-click (editor pos)
+  (if (igo-editor-editable-p editor t)
+      (if (igo-editor-set-intersection-setup-at
+           editor pos
+           (igo-editor-get-mode-property editor :istate))
+          (igo-editor-update-on-modified editor)
+        (message "not changed"))))
 
 (defun igo-editor-set-intersection-setup-at (editor pos istate)
   "Add stone to setup property of current node."
@@ -1153,7 +1185,7 @@
 (defun igo-editor-free-edit-toggle-turn (&optional editor)
   (interactive)
   (if (null editor) (setq editor (igo-editor-at)))
-  (if editor
+  (if (and editor (igo-editor-editable-p editor t))
       (let ((game (igo-editor-game editor)))
         (if game
             (if (igo-editor-set-turn-setup
@@ -1327,21 +1359,22 @@
                (curr-node (igo-game-current-node game))
                (mark-type (igo-editor-get-mode-property editor :mark-type)))
 
-          ;; Rewrite the mark on the intersection POS.
-          (cond
-           ((eq mark-type 'text)
-            (igo-node-set-mark-at curr-node pos mark-type
-                                     (read-string "Text: ")))
-           ((or (eq mark-type 'cross)
-                (eq mark-type 'circle)
-                (eq mark-type 'square)
-                (eq mark-type 'triangle))
-            (igo-node-set-mark-at curr-node pos mark-type))
-           ((null mark-type)
-            (igo-node-delete-mark-at curr-node pos)))
+          (when (igo-editor-editable-p editor t)
+            ;; Rewrite the mark on the intersection POS.
+            (cond
+             ((eq mark-type 'text)
+              (igo-node-set-mark-at curr-node pos mark-type
+                                    (read-string "Text: ")))
+             ((or (eq mark-type 'cross)
+                  (eq mark-type 'circle)
+                  (eq mark-type 'square)
+                  (eq mark-type 'triangle))
+              (igo-node-set-mark-at curr-node pos mark-type))
+             ((null mark-type)
+              (igo-node-delete-mark-at curr-node pos)))
 
-          ;; Update
-          (igo-editor-update-on-modified editor)))))
+            ;; Update
+            (igo-editor-update-on-modified editor))))))
 
 ;; Editor - Comment
 
@@ -1351,13 +1384,20 @@
 
   (let ((curr-node (igo-editor-current-node editor)))
     (if curr-node
-        (let* ((old-comment (or (igo-node-get-comment curr-node) ""))
-               (new-comment (read-from-minibuffer "Comment: " old-comment)))
-          (when (not (string= new-comment old-comment))
-            (if (string= new-comment "")
-                (igo-node-delete-comment curr-node)
-              (igo-node-set-comment curr-node new-comment))
-            (igo-editor-update-on-modified editor))))))
+        (if (igo-editor-editable-p editor)
+            ;; editable
+            (let* ((old-comment (or (igo-node-get-comment curr-node) ""))
+                   (new-comment (read-from-minibuffer "Comment: " old-comment)))
+              (when (not (string= new-comment old-comment))
+                (if (string= new-comment "")
+                    (igo-node-delete-comment curr-node)
+                  (igo-node-set-comment curr-node new-comment))
+                (igo-editor-update-on-modified editor)))
+          ;; not editable
+          (let ((comment (igo-node-get-comment curr-node)))
+            (if comment
+                (message "%s" comment)
+              (message "No comment")))))))
 
 (defun igo-editor-show-comment (&optional editor)
   (interactive)
