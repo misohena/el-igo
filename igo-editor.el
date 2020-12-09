@@ -403,7 +403,7 @@
     (goto-char begin)
     (insert text)
     (delete-region (point) (+ (point) (- end begin)))
-    (if (equal (char-after) ?\n)
+    (if (not (equal (char-after) ?\n))
         (insert ?\n) )))
 
 ;; Editor - Error
