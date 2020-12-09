@@ -56,16 +56,23 @@
 
 (defun igo-editor-at (&optional pos)
   (if (null pos)
-      (if (mouse-event-p last-input-event)
-          (progn
-            (setq pos (posn-point (event-start last-input-event)))
-            (if igo-editor-move-point-on-click (goto-char pos)))
-        (setq pos (point))))
+      (setq pos (point)))
   (or
    (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-at pos))
    (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-at (1- pos)))
-   (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-in (1- pos) (1+ pos)))
-   ))
+   (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-in (1- pos) (1+ pos)))))
+
+(defun igo-editor-at-input ()
+  (if (mouse-event-p last-input-event)
+      (let* ((mouse-pos (event-start last-input-event))
+             (window (posn-window mouse-pos))
+             (buffer (window-buffer window))
+             (pos (posn-point mouse-pos)))
+        (if igo-editor-move-point-on-click
+            (set-window-point window pos))
+        (with-current-buffer buffer
+          (igo-editor-at pos)))
+    (igo-editor-at (point))))
 
 (defun igo-editors-in (begin end)
   (delq nil (mapcar (lambda (ov) (overlay-get ov 'igo-editor))
@@ -274,13 +281,13 @@
 
 (defvar igo-editor-main-menu-map
   '(keymap "Main Menu"
-           (igo-editor-toggle-status-bar menu-item "Toggle Status Bar" igo-editor-toggle-status-bar :button (:toggle . (igo-editor-get-property (igo-editor-at) :show-status-bar)))
-           (igo-editor-toggle-move-number menu-item "Toggle Move Number" igo-editor-toggle-move-number :button (:toggle . (igo-editor-get-property (igo-editor-at) :show-move-number)))
-           (igo-editor-toggle-branch-text menu-item "Toggle Branch Text" igo-editor-toggle-branch-text :button (:toggle . (igo-editor-get-property (igo-editor-at) :show-branches)))
+           (igo-editor-toggle-status-bar menu-item "Toggle Status Bar" igo-editor-toggle-status-bar :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-status-bar)))
+           (igo-editor-toggle-move-number menu-item "Toggle Move Number" igo-editor-toggle-move-number :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-move-number)))
+           (igo-editor-toggle-branch-text menu-item "Toggle Branch Text" igo-editor-toggle-branch-text :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-branches)))
            (sep-1 menu-item "--")
            (igo-editor-quit menu-item "Quit" igo-editor-quit)
            (sep-2 menu-item "--")
-           (igo-editor-toggle-editable menu-item "Editable" igo-editor-toggle-editable :button (:toggle . (igo-editor-get-property (igo-editor-at) :editable)))
+           (igo-editor-toggle-editable menu-item "Editable" igo-editor-toggle-editable :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :editable)))
            (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
            (igo-editor-free-edit-mode menu-item "Free Edit" igo-editor-free-edit-mode)
            (igo-editor-mark-edit-mode menu-item "Mark Edit" igo-editor-mark-edit-mode)
@@ -289,7 +296,7 @@
 
 (defun igo-editor-main-menu (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (if editor
       (let ((fn (car (last (x-popup-menu last-input-event igo-editor-main-menu-map)))))
         (if (and (symbolp fn) (fboundp fn))
@@ -374,7 +381,9 @@
             ;; Record last update text
             (igo-editor--last-buffer-text-set editor text)
             ;; Replace text from BEGIN to END
-            (igo-editor-replace-buffer-text begin end text))))))
+            (with-current-buffer
+                (overlay-buffer ov)
+              (igo-editor-replace-buffer-text begin end text)))))))
 
 (defun igo-editor-update-buffer-text-forced (editor &optional game)
   (igo-editor-replace-buffer-text
@@ -456,7 +465,7 @@
 
 (defun igo-editor-text-mode (&optional editor auto-recovery)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (when (and editor (not (igo-editor-text-mode-p editor)))
     (let ((ov (igo-editor-overlay editor)))
       (igo-editor-mode-set editor nil) ;;clear editing mode
@@ -469,7 +478,7 @@
 
 (defun igo-editor-graphical-mode (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (when (and editor
              (not (igo-editor-graphical-mode-p editor)))
     (if (igo-editor-last-error editor)
@@ -690,14 +699,14 @@
 
 (defun igo-editor-set-property-and-update-image
     (editor key value &optional recreate)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (when editor
     (igo-editor-set-property editor key value)
     (igo-editor-update-image editor recreate)))
 
 (defun igo-editor-toggle-property-and-update-image
     (editor key &optional recreate)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (when editor
     (igo-editor-set-property-and-update-image
      editor
@@ -733,7 +742,7 @@
 ;; Editor - Input on Image
 
 (defun igo-editor-last-input-event-as-intersection-click (&optional editor)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (if editor
       (let ((game (igo-editor-game editor))
             (board-view (igo-editor-board-view editor)))
@@ -760,7 +769,7 @@
 
 (defun igo-editor-quit (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (if editor
       (delete-overlay (igo-editor-overlay editor))))
 
@@ -769,7 +778,7 @@
 (defun igo-editor-previous-node ()
   "Move current node to previous node."
   (interactive)
-  (let ((editor (igo-editor-at)))
+  (let ((editor (igo-editor-at-input)))
     (if editor
         (let ((game (igo-editor-game editor)))
           (when game
@@ -780,7 +789,7 @@
 (defun igo-editor-next-node ()
   "Move current node to next node."
   (interactive)
-  (let ((editor (igo-editor-at)))
+  (let ((editor (igo-editor-at-input)))
     (if editor
         (let ((game (igo-editor-game editor)))
           (when game
@@ -798,7 +807,7 @@
 (defun igo-editor-first-node ()
   "Move current node to first (root) node."
   (interactive)
-  (let ((editor (igo-editor-at)))
+  (let ((editor (igo-editor-at-input)))
     (if editor
         (let ((game (igo-editor-game editor)))
           (when game
@@ -809,7 +818,7 @@
 (defun igo-editor-last-node ()
   "Move current node to last node that can be selected by default."
   (interactive)
-  (let ((editor (igo-editor-at)))
+  (let ((editor (igo-editor-at-input)))
     (if editor
         (let ((game (igo-editor-game editor)))
           (when game
@@ -820,7 +829,7 @@
 (defun igo-editor-select-next-node (&optional editor)
   "Move current node to selected next node."
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (let* ((game (if editor (igo-editor-game editor))))
     (if game
         (let* ((curr-node (igo-game-current-node game))
@@ -865,7 +874,7 @@
 
 (defun igo-editor-toggle-editable (&optional editor)
   (interactive)
-  (if (igo-editor-toggle-property (or editor (igo-editor-at)) :editable)
+  (if (igo-editor-toggle-property (or editor (igo-editor-at-input)) :editable)
       (message "Editable")
     (message "Read only")))
 
@@ -917,7 +926,7 @@
 
 (defun igo-editor-move-mode (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
 
   (when editor
     (igo-editor-mode-set
@@ -981,7 +990,7 @@
 
 (defun igo-editor-pass-click-r ()
   (interactive)
-  (let* ((editor (igo-editor-at))
+  (let* ((editor (igo-editor-at-input))
          (curr-node (igo-editor-current-node editor)))
     (if curr-node
         (igo-editor-move-mode-branch-click-r
@@ -1016,7 +1025,7 @@
 
 (defun igo-editor-put-stone (editor pos)
   (interactive
-   (let* ((editor (igo-editor-at))
+   (let* ((editor (igo-editor-at-input))
           (board (igo-editor-board editor)))
      (if (null board) (error "No game board."))
 
@@ -1031,7 +1040,7 @@
                (error "Out of board.")))
          (error "Invalid coordinate.")))))
 
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
 
   (let ((game (if editor (igo-editor-game editor))))
     (when game
@@ -1076,7 +1085,7 @@
 
 (defun igo-editor-pass (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
 
   (when editor
     (let* ((game (igo-editor-game editor)))
@@ -1095,7 +1104,7 @@
 
 (defun igo-editor-free-edit-mode (&optional editor istate)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
 
   (when editor
     (igo-editor-mode-set
@@ -1136,7 +1145,7 @@
         ))))
 
 (defun igo-editor-free-edit-select (istate)
-  (igo-editor-set-mode-property (igo-editor-at) :istate istate)
+  (igo-editor-set-mode-property (igo-editor-at-input) :istate istate)
   (message "Select %s" (symbol-name istate)))
 
 (defun igo-editor-free-edit-black ()
@@ -1184,7 +1193,7 @@
 
 (defun igo-editor-free-edit-toggle-turn (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (if (and editor (igo-editor-editable-p editor t))
       (let ((game (igo-editor-game editor)))
         (if game
@@ -1278,7 +1287,7 @@
 
 (defun igo-editor-mark-edit-mode (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
 
   (when editor
     (igo-editor-mode-set
@@ -1321,7 +1330,7 @@
         ))))
 
 (defun igo-editor-mark-edit-select (mark-type)
-  (igo-editor-set-mode-property (igo-editor-at) :mark-type mark-type)
+  (igo-editor-set-mode-property (igo-editor-at-input) :mark-type mark-type)
   (message "Select %s mark" (if (null mark-type) "delete"
                          (symbol-name mark-type))))
 
@@ -1380,7 +1389,7 @@
 
 (defun igo-editor-edit-comment (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
 
   (let ((curr-node (igo-editor-current-node editor)))
     (if curr-node
@@ -1401,7 +1410,7 @@
 
 (defun igo-editor-show-comment (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (let ((curr-node (igo-editor-current-node editor)))
     (if curr-node
         (let ((comment (igo-node-get-comment curr-node)))
@@ -1413,7 +1422,7 @@
 
 (defun igo-editor-init-board (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at)))
+  (if (null editor) (setq editor (igo-editor-at-input)))
   (if editor
       (let* ((board (igo-editor-board editor))
              (default-w (if board (igo-board-w board) igo-board-default-w))
