@@ -475,9 +475,6 @@
 
 ;; Editor - Image
 
-(defun igo-editor-board-size-attr (board)
-  (format "%s:%s" (igo-board-w board) (igo-board-h board)))
-
 (defun igo-editor-status-bar-top (editor)
   0)
 (defun igo-editor-board-top (editor)
@@ -504,8 +501,10 @@
       (when (or recreate
                 (null svg)
                 ;; Board size changed
-                (not (string= (igo-editor-board-size-attr board)
-                              (dom-attr svg 'data-board-size))))
+                (or
+                 (null board-view)
+                 (/= (igo-board-view-w board-view) (igo-board-w board))
+                 (/= (igo-board-view-h board-view) (igo-board-h board))))
         ;; New Board View (Determine grid interval and board pixel sizes)
         (setq board-view (igo-board-view board))
         (igo-editor--board-view-set editor board-view)
@@ -513,8 +512,6 @@
         ;; New SVG Root
         (setq svg (svg-create (igo-editor-image-w editor)
                               (igo-editor-image-h editor)))
-        (dom-set-attribute svg 'data-board-size
-                           (igo-editor-board-size-attr board))
         (igo-editor--svg-set editor svg)
         ;; Clear clickable areas
         (igo-editor-clear-image-map editor)
