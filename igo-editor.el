@@ -1449,7 +1449,7 @@
               (goto-char (point-min))
               (igo-sgf-parse-tree (current-buffer)))))
          (game-tree (igo-sgf-root-tree-to-game-tree sgf-tree))
-         (size (igo-sgf-tree-get-board-size sgf-tree))
+         (size (igo-sgf-node-get-board-size (igo-sgf-tree-root-node sgf-tree)))
          (game (igo-game (car size) (cdr size) game-tree)))
 
     game))

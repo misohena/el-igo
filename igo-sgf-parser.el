@@ -278,15 +278,8 @@
   (dolist (subtree (igo-sgf-tree-subtrees tree))
     (igo-sgf-tree-each-nodes subtree)))
 
-(defun igo-sgf-tree-get-board-size (tree)
-  (let* ((root-node (car (igo-sgf-tree-nodes tree)))
-         (sz-value (igo-sgf-node-get-property-value root-node "SZ" "19"))
-         (sz (igo-sgf-split-compose sz-value))
-         (w (string-to-number (igo-sgf-prop-value-content (if (consp sz) (car sz) sz))))
-         (h (string-to-number (igo-sgf-prop-value-content (if (consp sz) (cdr sz) sz)))))
-    (if (not (and (>= w 1) (<= w 52) (>= h 1) (<= h 52)))
-        (error "%sInvalid board size(w=%s h=%s)." (igo-sgf-prop-value-location-string sz-value) w h))
-    (cons w h)))
+(defun igo-sgf-tree-root-node (tree)
+  (car (igo-sgf-tree-nodes tree)))
 
 ;; Node
 (defun igo-sgf-node-leading-white-spaces (node) (aref node 0))
@@ -307,6 +300,24 @@
   (igo-sgf-format-location
    (igo-sgf-node-begin node)
    (igo-sgf-node-end node)))
+
+;; Root Node
+
+(defun igo-sgf-node-get-board-size (node)
+  (let* ((sz-value (igo-sgf-node-get-property-value node "SZ" "19"))
+         (sz (igo-sgf-split-compose sz-value))
+         (w (string-to-number (igo-sgf-prop-value-content (if (consp sz) (car sz) sz))))
+         (h (string-to-number (igo-sgf-prop-value-content (if (consp sz) (cdr sz) sz)))))
+    (if (not (and (>= w 1) (<= w 52) (>= h 1) (<= h 52)))
+        (error "%sInvalid board size(w=%s h=%s)." (igo-sgf-prop-value-location-string sz-value) w h))
+    (cons w h)))
+
+(defun igo-sgf-node-check-game-type (node)
+  (let* ((gm-value (igo-sgf-node-get-property-value node "GM" "1"))
+         (gm-str (igo-sgf-prop-value-content gm-value)))
+    (if (not (string= gm-str "1"))
+        (error "%sGame type is not Go(GM[1])." (igo-sgf-prop-value-location-string gm-value))
+      1)))
 
 ;; Property
 (defun igo-sgf-property-leading-white-spaces (prop) (aref prop 0))
@@ -483,9 +494,11 @@ ex:
 ;;
 
 (defun igo-sgf-root-tree-to-game-tree (sgf-root-tree)
-  (let* ((size (igo-sgf-tree-get-board-size sgf-root-tree))
+  (let* ((root-node (igo-sgf-tree-root-node sgf-root-tree))
+         (size (igo-sgf-node-get-board-size root-node))
          (w (car size))
          (h (cdr size)))
+    (igo-sgf-node-check-game-type root-node)
     (igo-sgf-tree-to-game-tree sgf-root-tree w h 0 'black nil)))
 
 (defun igo-sgf-tree-to-game-tree (sgf-tree w h move-number turn prev-node)
