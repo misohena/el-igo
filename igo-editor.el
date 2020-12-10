@@ -107,6 +107,9 @@
                    ;;:rotate180 nil
                    :editable t
                    ) ;;11:properties
+                  (list
+                   (cons 'keymap-change nil)
+                   ) ;;12:hooks
                   )))
     ;;(message "make overlay %s" ov)
     (overlay-put ov 'igo-editor editor)
@@ -132,6 +135,7 @@
 (defun igo-editor-display-mode (editor) (aref editor 9))
 (defun igo-editor-curr-mode (editor) (aref editor 10))
 (defun igo-editor-properties (editor) (aref editor 11))
+(defun igo-editor-event-hooks (editor) (aref editor 12))
 
 ;;(defun igo-editor--overlay-set (editor ov) (aset editor 0 ov))
 (defun igo-editor--game-set (editor game) (aset editor 1 game))
@@ -145,6 +149,7 @@
 (defun igo-editor--display-mode-set (editor dmode) (aset editor 9 dmode))
 (defun igo-editor--curr-mode-set (editor mode) (aset editor 10 mode))
 (defun igo-editor--properties-set (editor props) (aset editor 11 props))
+(defun igo-editor--event-hooks (editor props) (aset editor 12 props))
 
 (defun igo-editor-begin (editor) (overlay-start (igo-editor-overlay editor)))
 (defun igo-editor-end (editor) (overlay-end (igo-editor-overlay editor)))
@@ -180,12 +185,42 @@
    key
    (not (igo-editor-get-property editor key))))
 
+;; Editor - Hooks
+
+(defun igo-editor-add-hook (editor type fun)
+  (let ((event-hooks (assq type (igo-editor-event-hooks editor))))
+    (if event-hooks
+        (setcdr event-hooks (cons fun (cdr event-hooks))))))
+
+(defun igo-editor-remove-hook (editor type fun)
+  (let ((event-hooks (assq type (igo-editor-event-hooks editor))))
+    (if event-hooks
+        (setcdr event-hooks (delete fun (cdr event-hooks))))))
+
+(defun igo-editor-call-hooks (editor type &rest args)
+  (let ((event-hooks (assq type (igo-editor-event-hooks editor))))
+    (if event-hooks
+        ;; Call hooks and return a list of return values
+        (mapcar (lambda (fun) (apply fun args)) (cdr event-hooks)))))
+
+(defun igo-editor-call-hooks-until-t (editor type &rest args)
+  "Call hooks until t is returned."
+  (let ((hooks (cdr (assq type (igo-editor-event-hooks editor))))
+        value)
+    (while (and hooks (null (setq value (apply (car hooks) args))))
+      (setq hooks (cdr hooks)))
+    value))
+
 ;; Editor - Keymaps
 
 (defun igo-editor-set-keymap (editor keymap)
-  (let ((ov (igo-editor-overlay editor)))
-    (if ov
-        (overlay-put ov 'keymap keymap))))
+  ;; Call hooks before change and do not change if t is returned from a hook.
+  ;; igo-sgf-mode sets KEYMAP to local-map.
+  (if (not (igo-editor-call-hooks-until-t editor 'keymap-change editor keymap))
+      ;; Set KEYMAP to overlay's keymap property
+      (let ((ov (igo-editor-overlay editor)))
+        (if ov
+            (overlay-put ov 'keymap keymap)))))
 
 (defun igo-editor-self-insert-command ()
   (interactive))

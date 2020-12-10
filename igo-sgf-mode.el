@@ -30,15 +30,22 @@
       '((igo-sgf-mode-fontify)))
 
 (defun igo-sgf-mode ()
+  "Major mode for editing SGF files.
+
+The following commands are available:
+
+\\{igo-sgf-mode-map}"
   (interactive)
 
+  ;; Create new igo-editor
   (setq-local igo-sgf-mode-editor (igo-editor (point-min) (point-max) nil nil t))
+  (igo-sgf-mode-transfer-overlay-keymap-to-local-map igo-sgf-mode-editor)
 
-  ;;(use-local-map igo-sgf-mode-map)
-  (setq-local mode-name "SGF(Go Game)")
-  (setq-local major-mode 'igo-sgf-mode)
+  ;; Set major mode
+  (setq mode-name "SGF(Go Game)")
+  (setq major-mode 'igo-sgf-mode)
+  (setq font-lock-defaults '(igo-sgf-mode-font-lock-keywords t))
 
-  (setq-local font-lock-defaults '(igo-sgf-mode-font-lock-keywords t))
 
   (run-mode-hooks 'igo-sgf-mode-hook))
 
@@ -60,5 +67,27 @@
     (goto-char (point-min))
     (igo-sgf-mode-fontify (point-max))))
 
+
+;; Keymap
+
+(defvar-local igo-sgf-mode-map nil)
+
+(defun igo-sgf-mode-transfer-overlay-keymap-to-local-map (editor)
+  (let* ((ov (igo-editor-overlay editor))
+         (keymap (overlay-get ov 'keymap)))
+    ;; Transfer overlay's keymap property to local-map.
+    (setq-local igo-sgf-mode-map keymap)
+    (use-local-map keymap)
+    (overlay-put ov 'keymap nil) ;; remove keymap property
+    ;; Track keymap changes.
+    (igo-editor-add-hook editor 'keymap-change #'igo-sgf-mode-on-keymap-change)
+
+    editor))
+
+(defun igo-sgf-mode-on-keymap-change (editor keymap)
+  (setq-local igo-sgf-mode-map keymap)
+  (use-local-map keymap)
+  ;; Return t. EDITOR does not change the overlay's keymap.
+  t)
 (provide 'igo-sgf-mode)
 ;;; igo-sgf-mode.el ends here
