@@ -484,6 +484,9 @@
   (if (null editor) (setq editor (igo-editor-at-input)))
   (when (and editor
              (not (igo-editor-graphical-mode-p editor)))
+    ;; Update model if text changed after last parse.
+    (igo-editor-update-model editor)
+    ;; Change mode if succeeded.
     (if (igo-editor-last-error editor)
         (igo-editor-show-last-error editor)
 
