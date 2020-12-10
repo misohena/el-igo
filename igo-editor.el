@@ -200,6 +200,9 @@
 (defvar igo-editor-graphical-mode-map
   (let ((km (make-sparse-keymap)))
     (define-key km [remap self-insert-command] #'igo-editor-self-insert-command)
+    (define-key km "\C-m" 'igo-editor-self-insert-command)
+
+    ;;
     (define-key km (kbd "C-c q") #'igo-editor-quit)
     (define-key km (kbd "C-x C-q") #'igo-editor-toggle-editable)
     ;; display mode
