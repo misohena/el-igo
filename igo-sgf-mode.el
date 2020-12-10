@@ -26,9 +26,6 @@
 
 (require 'igo-editor)
 
-(setq igo-sgf-mode-font-lock-keywords
-      '((igo-sgf-mode-fontify)))
-
 (defun igo-sgf-mode ()
   "Major mode for editing SGF files.
 
@@ -50,6 +47,10 @@ The following commands are available:
 
   (run-mode-hooks 'igo-sgf-mode-hook))
 
+;; Font Lock
+
+(defvar igo-sgf-mode-font-lock-keywords
+  '((igo-sgf-mode-fontify)))
 
 (defun igo-sgf-mode-fontify (limit)
   (let ((editor igo-sgf-mode-editor))
@@ -57,6 +58,9 @@ The following commands are available:
     (igo-editor-set-region editor (point-min) (point-max))
     ;; Update editor state from buffer text.
     (igo-editor-update editor)
+    ;; Set font-lock properties
+    (add-text-properties (point-min) (point-max)
+                         '(font-lock-fontified t font-lock-multiline t))
     ;; Highlight error place
     (if (igo-editor-last-error editor)
         (put-text-property (igo-editor-last-error-begin editor)
