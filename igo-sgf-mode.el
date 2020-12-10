@@ -40,6 +40,7 @@ The following commands are available:
   ;; Create new igo-editor
   (setq-local igo-sgf-mode-editor (igo-editor (point-min) (point-max) nil nil t))
   (igo-sgf-mode-transfer-overlay-keymap-to-local-map igo-sgf-mode-editor)
+  (igo-sgf-mode-track-buffer-read-only igo-sgf-mode-editor)
 
   ;; Set major mode
   (setq mode-name "SGF(Go Game)")
@@ -89,5 +90,20 @@ The following commands are available:
   (use-local-map keymap)
   ;; Return t. EDITOR does not change the overlay's keymap.
   t)
+
+;; Read Only
+
+(defun igo-sgf-mode-track-buffer-read-only (editor)
+  (igo-sgf-mode-update-buffer-read-only editor)
+  (igo-editor-add-hook editor 'text-mode
+                       #'igo-sgf-mode-update-buffer-read-only)
+  (igo-editor-add-hook editor 'graphical-mode
+                       #'igo-sgf-mode-update-buffer-read-only))
+
+(defun igo-sgf-mode-update-buffer-read-only (editor)
+  (setq buffer-read-only (not (igo-editor-text-mode-p editor))))
+
+
+
 (provide 'igo-sgf-mode)
 ;;; igo-sgf-mode.el ends here

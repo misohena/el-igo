@@ -109,6 +109,8 @@
                    ) ;;11:properties
                   (list
                    (cons 'keymap-change nil)
+                   (cons 'text-mode nil)
+                   (cons 'graphical-mode nil)
                    ) ;;12:hooks
                   )))
     ;;(message "make overlay %s" ov)
@@ -438,11 +440,12 @@
 
 (defun igo-editor-replace-buffer-text (begin end text)
   (save-excursion
-    (goto-char begin)
-    (insert text)
-    (delete-region (point) (+ (point) (- end begin)))
-    (if (not (equal (char-after) ?\n))
-        (insert ?\n) )))
+    (let ((inhibit-read-only t))
+      (goto-char begin)
+      (insert text)
+      (delete-region (point) (+ (point) (- end begin)))
+      (if (not (equal (char-after) ?\n))
+          (insert ?\n) ))))
 
 ;; Editor - Error
 
@@ -512,7 +515,8 @@
       (igo-editor--svg-set editor nil)
       (igo-editor--image-set editor nil)
       (igo-editor--display-mode-set
-       editor (if auto-recovery 'text-auto-recovery 'text)))))
+       editor (if auto-recovery 'text-auto-recovery 'text))
+      (igo-editor-call-hooks editor 'text-mode editor))))
 
 (defun igo-editor-graphical-mode (&optional editor)
   (interactive)
@@ -528,7 +532,9 @@
       (igo-editor--display-mode-set editor 'graphical)
       (igo-editor-update-image editor)
       (igo-editor-set-keymap editor igo-editor-graphical-mode-map) ;;Unnecessary? (set keymap in start move mode)
-      (igo-editor-move-mode editor))))
+      (igo-editor-move-mode editor)
+
+      (igo-editor-call-hooks editor 'graphical-mode editor))))
 
 ;; Editor - Image
 
