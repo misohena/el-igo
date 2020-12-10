@@ -59,7 +59,10 @@ height.")
            ((numberp spec))
            (t 0.8))))
     (if (floatp max-size)
-        (ceiling (* max-size (if width-p (frame-text-width) (frame-text-height))))
+        (ceiling (/ (* max-size (if width-p
+                                    (frame-text-width)
+                                  (frame-text-height)))
+                    (image-compute-scaling-factor image-scaling-factor)))
       max-size)))
 
 ;; Board View - Constructor
