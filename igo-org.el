@@ -88,18 +88,26 @@
         (options (org-babel-parse-header-arguments options-str t)))
     ;; Apply options to editor
     (dolist (opt options)
-      (cond
-       ((eq (car opt) :status-bar)
-        (igo-editor-set-status-bar-visible editor (igo-org-opt-bool (cdr opt))))
-       ((eq (car opt) :move-number)
-        (igo-editor-set-move-number-visible editor (igo-org-opt-bool (cdr opt))))
-       ((eq (car opt) :branch-text)
-        (igo-editor-set-branch-text-visible editor (igo-org-opt-bool (cdr opt))))
-       ((eq (car opt) :editable)
-        (igo-editor-set-editable editor (igo-org-opt-bool (cdr opt))))
-       ((eq (car opt) :read-only)
-        (igo-editor-set-editable editor (not (igo-org-opt-bool (cdr opt)))))
-       ))
+      (let ((key (car opt))
+            (value (cdr opt)))
+        (cond
+         ((eq key :status-bar)
+          (igo-editor-set-status-bar-visible editor (igo-org-opt-bool value)))
+         ((eq key :move-number)
+          (igo-editor-set-move-number-visible editor (igo-org-opt-bool value)))
+         ((eq key :branch-text)
+          (igo-editor-set-branch-text-visible editor (igo-org-opt-bool value)))
+         ((eq key :editable)
+          (igo-editor-set-editable editor (igo-org-opt-bool value)))
+         ((eq key :read-only)
+          (igo-editor-set-editable editor (not (igo-org-opt-bool value))))
+         ((eq key :path)
+          (igo-editor-find-by-queries
+           editor
+           (if (numberp value)
+               (list value)
+             (split-string value "[/ \f\t\n\r\v]+" t "[ \f\t\n\r\v]+"))))
+         )))
     editor))
 
 (defun igo-org-opt-bool (value)

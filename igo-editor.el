@@ -903,6 +903,15 @@
                     (igo-editor-show-comment editor))
                 (message "Out of range.")))))))))
 
+(defun igo-editor-find-by-queries (editor queries)
+  (if editor
+      (let ((game (igo-editor-game editor)))
+        (when game
+          (igo-game-undo-all game)
+          (igo-game-redo-by-queries game queries)
+          (if (igo-editor-graphical-mode-p editor)
+              (igo-editor-update-image editor))))))
+
 ;; Editor - Modified
 
 (defun igo-editor-update-on-modified (editor)

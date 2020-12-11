@@ -668,6 +668,7 @@
       1)))
 
 (defun igo-node-move-number (node)
+  "Return the depth of NODE from the root node, do not include setup node."
   (let ((num 0))
     (while node
       (if (igo-node-move-p node)
@@ -676,6 +677,7 @@
     num))
 
 (defun igo-node-depth (node)
+  "Return the depth of NODE from the root node, including setup node."
   (let ((num 0))
     (while node
       (setq num (1+ num))
@@ -698,6 +700,15 @@
 (defun igo-node-move-number-at (node pos)
   (igo-node-move-number (igo-node-find-move-back node pos)))
 
+(defun igo-node-prev-nth (node n &optional clamp-p)
+  (let (next)
+    (while (and (> n 0) node)
+      (setq next node)
+      (setq node (igo-node-prev node))
+      (setq n (1- n)))
+    (if (and clamp-p (null node)) next node)))
+
+
 ;; Node - Next Nodes(Children)
 
 (defun igo-node-set-last-visited (node next-node)
@@ -716,6 +727,7 @@
              (car next-nodes))))))
 
 (defun igo-node-find-next-by-move (node move)
+  "Return the node that matches MOVE from the next nodes."
   (seq-find (lambda (next) (= (igo-node-move next) move))
             (igo-node-next-nodes node)))
 
@@ -751,6 +763,73 @@
         (setq dirs nil)
         (setq node nil))))
   node)
+
+(defun igo-node-find-by-queries (node queries board-w board-h)
+  (while queries
+    (let ((q (car queries)))
+      (cond
+       ;; integer : nth node(choose first variation)
+       ((integerp q)
+        (setq node (igo-node-nth node q t)))
+       ((stringp q)
+        (cond
+         ;; "xx" : find point breadth-first
+         ((string-match-p "^[a-zA-Z][a-zA-Z]$" q)
+          (let* ((pos (igo-sgf-value-as-move (igo-sgf-make-prop-value "" 0 q 0) board-w board-h))
+                 (target (igo-node-find-breadth-first node (lambda (node) (= (igo-node-move node) pos)))))
+            (if target
+                (setq node target))))
+         ;; "X" : find next fork
+         ((string-match-p "^[A-Z]$" q)
+          (let ((index (- (elt q 0) ?A))
+                (fork (igo-node-find-first-fork-or-last node)))
+            (if (and fork (< index (length (igo-node-next-nodes fork))))
+                (setq node (nth index (igo-node-next-nodes fork))))))
+         ;; "_" : first fork
+         ((string= "_" q)
+          (setq node (igo-node-find-first-fork-or-last node)))
+         ;; "123" : nth node(choose first variation)
+         ((string-match-p "^-?[0-9]+$" q)
+          (setq node (igo-node-nth node (string-to-number q) t))))
+        )))
+    (setq queries (cdr queries)))
+  node)
+
+(defun igo-node-nth (node n &optional clamp-p)
+  (if (>= n 0)
+      (igo-node-next-nth node n clamp-p)
+    (igo-node-prev-nth node (- n) clamp-p)))
+
+(defun igo-node-next-nth (node n &optional clamp-p)
+  (let (prev)
+    (while (and (> n 0) node)
+      (setq prev node)
+      (setq node (car (igo-node-next-nodes node)))
+      (setq n (1- n)))
+    (if (and clamp-p (null node)) prev node)))
+
+(defun igo-node-find-first-fork-or-last (node)
+  (while (= (length (igo-node-next-nodes node)) 1)
+    (setq node (car (igo-node-next-nodes node))))
+  ;; (length (igo-node-next-nodes node)) is 0 or 2 or more
+  node)
+
+(defun igo-node-find-breadth-first (node pred)
+  (let ((curr (list node))
+        next
+        result)
+    (while curr
+      (while (and curr (not (funcall pred (car curr))))
+        (setq next (append next (igo-node-next-nodes (car curr))))
+        (setq curr (cdr curr)))
+
+      (if curr
+          (progn
+            (setq result (car curr))
+            (setq curr nil))
+        (setq curr next)
+        (setq next nil)))
+    result))
 
 (defun igo-node-change-next-node-order(node index delta)
   (let* ((next-nodes (igo-node-next-nodes node))
@@ -1099,6 +1178,16 @@
     (while (and dirs (setq next-node (nth (car dirs) (igo-node-next-nodes (igo-game-current-node game)))))
       (igo-game-apply-node game next-node)
       (setq dirs (cdr dirs)))))
+
+(defun igo-game-redo-by-queries (game queries)
+  (let* ((board (igo-game-board game))
+         (target (igo-node-find-by-queries
+                  (igo-game-root-node game)
+                  queries
+                  (igo-board-w board)
+                  (igo-board-h board))))
+    (if target
+        (igo-game-redo-by-path game (igo-node-path-from-root target)))))
 
 (provide 'igo-model)
 ;;; igo-model.el ends here
