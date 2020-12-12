@@ -630,6 +630,86 @@ ex:
    (igo-sgf-point-letter (igo-pos-to-x pos w))
    (igo-sgf-point-letter (igo-pos-to-y pos w))))
 
+(defun igo-sgf-point-list-compressed (pos-list w)
+  (mapconcat
+   (lambda (rect)
+     (let ((lt (igo-sgf-point (igo-xy-to-pos (caar rect) (cdar rect) w) w));;left-top
+           (rb (igo-sgf-point (igo-xy-to-pos (cadr rect) (cddr rect) w) w)));;right-bottom
+       (if (string= lt rb)
+           (concat "[" lt "]")
+         (concat "[" lt ":" rb "]"))))
+   (igo-sgf-pos-list-to-rect-list pos-list w)
+   ""))
+
+(defun igo-sgf-pos-list-to-rect-list (pos-list w)
+  "Convert to position list to rectangle list.
+
+ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
+  (setq pos-list (seq-sort #'< pos-list))
+  (let (prev-line
+        curr-line
+        (curr-y 0)
+        fixed-rects)
+
+    (while pos-list
+      (let* ((pos (car pos-list))
+             (y (igo-pos-to-y pos w))
+             (left (igo-pos-to-x pos w))
+             (right left))
+
+        ;; Find continuous range on the same line
+        ;; (left y)-(right y)
+        (setq pos-list (cdr pos-list)) ;;next pos
+        (while (and pos-list
+                    (= (igo-pos-to-x (car pos-list) w) (1+ right)) ;;to-x(pos) == right+1
+                    (= (igo-pos-to-y (car pos-list) w) y)) ;;to-y(pos) == y
+          (setq right (1+ right))
+          (setq pos-list (cdr pos-list))) ;;next pos
+
+        ;; If line changed
+        (when (/= y curr-y)
+          ;; Fix all remaining rects in prev-line
+          (setq fixed-rects (nconc fixed-rects prev-line))
+          (setq prev-line nil)
+          ;; Move curr-line to prev-line or fix rects in curr-line
+          (if (= (1- y) curr-y) ;;curr-y is prev line
+              ;; If 1 line increased, set curr-line to prev-line
+              (setq prev-line (nreverse curr-line))
+            ;; If 2 or more lines increased, fix all rects in curr-line
+            (setq fixed-rects (nconc fixed-rects (nreverse curr-line))))
+          ;; Clear curr line
+          (setq curr-line nil)
+          (setq curr-y y))
+
+        ;; Fix rect (rect.left < left) in prev-line
+        (while (and prev-line (< (caar (car prev-line)) left)) ;; prev-line->left < left
+          (push (car prev-line) fixed-rects)
+          (setq prev-line (cdr prev-line)))
+
+        ;; Find a rect continue from prev-line to curr-line
+        ;; same horizontal range (rect.left == left && rect.right == right)
+        (if (and prev-line
+                 (= (caar (car prev-line)) left) ;;prev-line->left == left
+                 (= (cadr (car prev-line)) right)) ;;prev-line->right == right
+            ;; If found, extend bottom
+            (progn
+              (setcdr (cdr (car prev-line)) y) ;;bottom=y
+              (push (car prev-line) curr-line)
+              (setq prev-line (cdr prev-line)))
+          ;; If not found, create a new rect
+          (push (cons (cons left y) (cons right y)) curr-line))
+
+        ;; Fix rect (rect.left <= right) in prev-line
+        (while (and prev-line (<= (caar (car prev-line)) right)) ;;prev-line->left <= right
+          (push (car prev-line) fixed-rects)
+          (setq prev-line (cdr prev-line)))))
+
+    (setq fixed-rects (nconc fixed-rects prev-line (nreverse curr-line)))
+
+    (sort fixed-rects
+          (lambda (r1 r2) (< (igo-xy-to-pos (caar r1) (cdar r1) w)
+                             (igo-xy-to-pos (caar r2) (cdar r2) w))))))
+
 (defun igo-sgf-string-from-game-tree (node w h turn)
   (let ((sgf-tree-p (or (igo-node-root-p node) ;; is root
                         (> (igo-node-number-of-siblings node) 1)))) ;;has siblings
@@ -668,9 +748,9 @@ ex:
              (setq turn change-turn))
 
            (concat
-            (if change-black (concat "AB" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-black "")))
-            (if change-white (concat "AW" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-white "")))
-            (if change-empty (concat "AE" (mapconcat (lambda (pos) (concat "[" (igo-sgf-point pos w) "]")) change-empty "")))
+            (if change-black (concat "AB" (igo-sgf-point-list-compressed change-black w)))
+            (if change-white (concat "AW" (igo-sgf-point-list-compressed change-white w)))
+            (if change-empty (concat "AE" (igo-sgf-point-list-compressed change-empty w)))
             (if change-turn (concat "PL[" (igo-sgf-color change-turn) "]"))))))
 
      ;; Markup Properties
