@@ -284,7 +284,7 @@
 (defvar igo-editor-free-edit-mode-map
   (let ((km (make-sparse-keymap)))
     (set-keymap-parent km igo-editor-graphical-mode-map)
-    (define-key km [igo-grid mouse-1] #'igo-editor-free-edit-board-click)
+    (define-key km [igo-grid down-mouse-1] #'igo-editor-free-edit-board-down)
     (define-key km [igo-grid mouse-3] #'igo-editor-free-edit-board-click-r)
     (define-key km [igo-editor-free-edit-quit mouse-1] #'igo-editor-move-mode)
     (define-key km [igo-editor-free-edit-black mouse-1] #'igo-editor-free-edit-black)
@@ -788,29 +788,37 @@
 
 ;; Editor - Input on Image
 
-(defun igo-editor-last-input-event-as-intersection-click (&optional editor)
-  (if (null editor) (setq editor (igo-editor-at-input)))
+(defun igo-editor-mouse-event-to-board-xy (editor event)
   (if editor
       (let ((game (igo-editor-game editor))
             (board-view (igo-editor-board-view editor)))
         (if (and game
                  board-view
-                 (mouse-event-p last-input-event))
+                 (mouse-event-p event))
             (let* ((board (igo-game-board game))
                    (image-scale (igo-editor-image-scale editor))
-                   (xy (posn-object-x-y (event-start last-input-event)))
-                   (x (igo-board-view-to-grid-x board-view (round (/ (float (car xy)) image-scale))))
-                   (y (igo-board-view-to-grid-y board-view (round (/ (float (cdr xy)) image-scale))
-                                                (igo-editor-board-top editor))))
+                   (xy (posn-object-x-y (event-start event)))
+                   (x (igo-board-view-to-grid-x
+                       board-view (round (/ (float (car xy)) image-scale))))
+                   (y (igo-board-view-to-grid-y
+                       board-view (round (/ (float (cdr xy)) image-scale))
+                       (igo-editor-board-top editor))))
 
               (when (and (>= x 0)
                          (>= y 0)
                          (< x (igo-board-w board))
                          (< y (igo-board-h board)))
-                (list :pos (igo-board-xy-to-pos board x y)
-                      :x x
-                      :y y
-                      :editor editor)))))))
+                (cons x y)))))))
+
+(defun igo-editor-last-input-event-as-intersection-click (&optional editor)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+
+  (let ((xy (igo-editor-mouse-event-to-board-xy editor last-input-event)))
+    (if xy
+        (list :pos (igo-board-xy-to-pos (igo-editor-board editor) (car xy) (cdr xy))
+              :x (car xy)
+              :y (cdr xy)
+              :editor editor))))
 
 ;; Editor - Destroy
 
@@ -1216,36 +1224,49 @@
   (interactive)
   (igo-editor-free-edit-select 'empty))
 
-(defun igo-editor-free-edit-board-click ()
+(defun igo-editor-free-edit-board-down ()
   (interactive)
-  (let ((ev (igo-editor-last-input-event-as-intersection-click)))
-    (if ev
-        (let* ((editor (plist-get ev :editor))
-               (pos (plist-get ev :pos))
-               (game (igo-editor-game editor)))
-          (if game
-              (igo-editor-free-edit-intersection-click editor pos))))))
+  (let* ((editor (igo-editor-at-input))
+         (board (igo-editor-board editor))
+         (down-event last-input-event)
+         (down-xy (igo-editor-mouse-event-to-board-xy editor down-event)))
 
-(defun igo-editor-free-edit-intersection-click (editor pos)
-  (if (igo-editor-editable-p editor t)
+    (when (and down-xy ;;editor != nil, game != nil, board != nil
+               (igo-editor-editable-p editor t))
+
+      ;; mouse down point
       (if (igo-editor-set-intersection-setup-at
-           editor pos
+           editor (igo-board-xy-to-pos board (car down-xy) (cdr down-xy))
            (igo-editor-get-mode-property editor :istate))
-          (igo-editor-update-on-modified editor)
-        (message "not changed"))))
+          (igo-editor-update-on-modified editor))
+
+      ;; dragging points
+      (igo-editor-track-dragging
+       down-event
+       (lambda (event)
+         (let ((move-xy (igo-editor-mouse-event-to-board-xy editor event)))
+           (if (and
+                move-xy
+                (igo-editor-set-intersection-setup-at
+                 editor (igo-board-xy-to-pos board (car move-xy) (cdr move-xy))
+                 (igo-editor-get-mode-property editor :istate)))
+               (igo-editor-update-on-modified editor))))))))
 
 (defun igo-editor-set-intersection-setup-at (editor pos istate)
   "Add stone to setup property of current node."
-  (igo-editor-set-setup-value
-   editor
-   istate
-   #'igo-same-intersection-state-p
-   (lambda (changes) (igo-board-changes-get-at changes pos))
-   (lambda (game) (igo-board-get-at (igo-game-board game) pos))
-   (lambda (changes istate) (igo-board-changes-set-at changes pos istate))
-   (lambda (game istate) (igo-board-set-at (igo-game-board game) pos istate))
-   (lambda (changes) (igo-board-changes-delete-at changes pos))
-   'empty))
+  (if (not (igo-same-intersection-state-p 
+            (igo-board-get-at (igo-editor-board editor) pos)
+            istate))
+      (igo-editor-set-setup-value
+       editor
+       istate
+       #'igo-same-intersection-state-p
+       (lambda (changes) (igo-board-changes-get-at changes pos))
+       (lambda (game) (igo-board-get-at (igo-game-board game) pos))
+       (lambda (changes istate) (igo-board-changes-set-at changes pos istate))
+       (lambda (game istate) (igo-board-set-at (igo-game-board game) pos istate))
+       (lambda (changes) (igo-board-changes-delete-at changes pos))
+       'empty)))
 
 (defun igo-editor-free-edit-toggle-turn (&optional editor)
   (interactive)
@@ -1516,6 +1537,50 @@
          (game (igo-game (car size) (cdr size) game-tree)))
 
     game))
+
+;;
+;; Mouse Utility
+;;
+
+(defun igo-editor-track-dragging (down-event on-move &optional on-up on-leave)
+  (if (not (memq 'down (event-modifiers down-event)))
+      (error "down-event is not down event. %s" (event-modifiers down-event)))
+  (let* ((down-basic-type (event-basic-type down-event))
+         (down-position (event-start down-event))
+         (target-window (posn-window down-position))
+         (target-point (posn-point down-position))
+         (target-object (posn-object down-position)))
+
+    (track-mouse
+      (let (result)
+        (while (null result)
+          (let ((event (read-event)))
+            (cond
+             ;; mouse move
+             ((mouse-movement-p event)
+              ;; check same object
+              (if (and (eq (posn-window (event-start event))
+                           target-window)
+                       (= (posn-point (event-start event))
+                          target-point)
+                       (eq (car (posn-object (event-start event))) ;;ex: 'image
+                           (car target-object))) ;;ex: 'image
+                  (if on-move (funcall on-move event))
+                ;; out of target
+                (if on-up (funcall on-leave event))
+                (setq result 'leave)))
+             ;; mouse up
+             ((and (eq (event-basic-type event) down-basic-type)
+                   (or (memq 'click (event-modifiers event))
+                       (memq 'drag (event-modifiers event))))
+              (if on-up (funcall on-up event))
+              (setq result 'up))
+             ;; otherwise
+             (t
+              (if on-up (funcall on-up event))
+              (setq result 'unknown-event)
+              (push (cons t event) unread-command-events)))))
+        result))))
 
 ;;
 ;; UI
