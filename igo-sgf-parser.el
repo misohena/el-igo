@@ -774,12 +774,16 @@ ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
              (triangle . "TR"))
            "")
           ;; LB
-          (mapconcat
-           (lambda (m)
-             (if (eq (igo-mark-type m) 'text)
-                 (concat "LB[" (igo-sgf-point (igo-mark-pos m) w) ":"
-                         (igo-sgf-simple-text (igo-mark-text m) t) "]")))
-           marks ""))))
+          (let ((values-str
+                 (mapconcat
+                  (lambda (m)
+                    (if (eq (igo-mark-type m) 'text)
+                        (concat "[" (igo-sgf-point (igo-mark-pos m) w) ":"
+                                (igo-sgf-simple-text (igo-mark-text m) t) "]")))
+                  marks "")))
+            (if (not (string= values-str ""))
+                (concat "LB" values-str)))
+          )))
 
      ;; Other SGF Properties
      (let ((props (igo-node-get-sgf-properties node))
