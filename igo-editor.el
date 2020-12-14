@@ -63,7 +63,8 @@
    (seq-some (lambda (ov) (overlay-get ov 'igo-editor)) (overlays-in (1- pos) (1+ pos)))))
 
 (defun igo-editor-at-input ()
-  (if (mouse-event-p last-input-event)
+  (if (or (mouse-event-p last-input-event)
+          (memq (event-basic-type last-input-event) '(wheel-up wheel-down)))
       (let* ((mouse-pos (event-start last-input-event))
              (window (posn-window mouse-pos))
              (buffer (window-buffer window))
@@ -279,6 +280,8 @@
     (define-key km [igo-editor-pass mouse-3] #'igo-editor-pass-click-r)
     (define-key km [igo-grid mouse-1] #'igo-editor-move-mode-board-click)
     (define-key km [igo-grid mouse-3] #'igo-editor-move-mode-board-click-r)
+    (define-key km [igo-grid wheel-up] #'igo-editor-previous-node)
+    (define-key km [igo-grid wheel-down] #'igo-editor-next-node)
     km))
 
 (defvar igo-editor-free-edit-mode-map
