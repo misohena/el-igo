@@ -471,7 +471,7 @@
 
 ;; Board Changes - Intersection State
 
-(defun igo-board-changes--find-previous-of (pred elements)
+(defun igo--find-previous-of (pred elements)
   "Return the cell before the first element in ELEMENTS where (PRED element) is non-nil."
   (let (prev-cell)
     (while (and elements (not (funcall pred (car elements))))
@@ -502,7 +502,7 @@
 
     ;; Insert in ascending order by POS
     (let* ((cell (igo-board-changes-pos-list-cell changes istate))
-           (insertion-point (igo-board-changes--find-previous-of
+           (insertion-point (igo--find-previous-of
                              (lambda (elem) (> elem pos))
                              (car cell))))
       (if insertion-point
@@ -918,17 +918,41 @@
   (igo-node-get-property node :marks))
 
 (defun igo-node-delete-mark-at (node pos)
-  (igo-node-set-marks-property
-   node
-   (seq-filter (lambda (mark) (/= (igo-mark-pos mark) pos))
-               (igo-node-get-marks-property node))))
+  (let* ((mark-list (igo-node-get-marks-property node))
+         (prev (igo--find-previous-of
+                (lambda (mark) (= (igo-mark-pos mark) pos))
+                mark-list))
+         (cell (if prev (cdr prev) mark-list)))
+    (when cell
+      ;; remove cell from list
+      (if prev
+          (setcdr prev (cddr prev))
+        (igo-node-set-marks-property node (cdr mark-list)))
+      ;; deleted
+      t)))
 
 (defun igo-node-set-mark-at (node pos type &optional text)
-  (igo-node-delete-mark-at node pos)
-  ;; push a mark to end of list.
-  (igo-node-set-marks-property
-   node
-   (nconc (igo-node-get-marks-property node) (list (igo-mark type pos text)))))
+  (let* ((mark-list (igo-node-get-marks-property node))
+         (prev (igo--find-previous-of
+                (lambda (mark) (= (igo-mark-pos mark) pos))
+                mark-list))
+         (cell (if prev (cdr prev) mark-list)))
+
+    (if (and cell
+             (eq (igo-mark-type (car cell)) type)
+             (equal (igo-mark-text (car cell)) text))
+        ;; already exists
+        nil
+      ;; remove cell from list
+      (if cell
+          (if prev
+              (setcdr prev (cddr prev))
+            (setq mark-list (cdr mark-list))))
+      ;; add new mark
+      (push (igo-mark type pos text) mark-list)
+      (igo-node-set-marks-property node mark-list)
+      ;; changed
+      t)))
 
 ;; Node - Properties - SGF Location
 ;; 1)

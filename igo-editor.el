@@ -301,7 +301,7 @@
 (defvar igo-editor-mark-edit-mode-map
   (let ((km (make-sparse-keymap)))
     (set-keymap-parent km igo-editor-graphical-mode-map)
-    (define-key km [igo-grid mouse-1] #'igo-editor-mark-edit-board-click)
+    (define-key km [igo-grid down-mouse-1] #'igo-editor-mark-edit-board-down)
     ;;(define-key km [igo-grid mouse-3] #'igo-editor-mark-edit-board-click-r)
     (define-key km [igo-editor-mark-edit-quit mouse-1] #'igo-editor-move-mode)
     (define-key km [igo-editor-mark-edit-cross mouse-1] #'igo-editor-mark-edit-cross)
@@ -1435,32 +1435,67 @@
   (interactive)
   (igo-editor-mark-edit-select nil))
 
-(defun igo-editor-mark-edit-board-click ()
+(defun igo-editor-mark-edit-board-down ()
   (interactive)
-  (let ((ev (igo-editor-last-input-event-as-intersection-click)))
-    (if ev
-        (let* ((editor (plist-get ev :editor))
-               (pos (plist-get ev :pos))
-               (game (igo-editor-game editor))
-               (curr-node (igo-game-current-node game))
-               (mark-type (igo-editor-get-mode-property editor :mark-type)))
+  (let* ((editor (igo-editor-at-input))
+         (down-event last-input-event)
+         (down-xy (igo-editor-mouse-event-to-board-xy editor down-event)))
 
-          (when (igo-editor-editable-p editor t)
-            ;; Rewrite the mark on the intersection POS.
-            (cond
-             ((eq mark-type 'text)
-              (igo-node-set-mark-at curr-node pos mark-type
-                                    (read-string "Text: ")))
-             ((or (eq mark-type 'cross)
-                  (eq mark-type 'circle)
-                  (eq mark-type 'square)
-                  (eq mark-type 'triangle))
-              (igo-node-set-mark-at curr-node pos mark-type))
-             ((null mark-type)
-              (igo-node-delete-mark-at curr-node pos)))
+    (when (and down-xy ;;edior != nil, game != nil, board != nil
+               (igo-editor-editable-p editor t))
 
-            ;; Update
-            (igo-editor-update-on-modified editor))))))
+      (let ((mark-type (igo-editor-get-mode-property editor :mark-type)))
+        (cond
+         ;; Text
+         ((eq mark-type 'text)
+          (let* ((text (igo-editor-get-mode-property editor :mark-text))
+                 ;; drag
+                 (end-event
+                  (igo-editor-track-dragging
+                   down-event
+                   (lambda (move-event)
+                     (if text
+                         (igo-editor-mark-edit-put
+                          editor
+                          (igo-editor-mouse-event-to-board-xy editor move-event)
+                          mark-type text))))))
+            ;; click
+            (when (eq (car-safe end-event) 'mouse-1) ;; no modifiers(S- C-)
+              (setq text (read-string "Text: "))
+              (if (string= text "") (setq text nil))
+              (igo-editor-set-mode-property editor :mark-text text)
+              (if text
+                  (igo-editor-mark-edit-put
+                   editor
+                   (igo-editor-mouse-event-to-board-xy editor end-event)
+                   mark-type text)))))
+
+         ;; Cross, Circle, Square, Triangle, Delete(nil)
+         (t
+          ;; down
+          (igo-editor-mark-edit-put editor down-xy mark-type nil)
+          ;; drag
+          (igo-editor-track-dragging
+           down-event
+           (lambda (move-event)
+             (igo-editor-mark-edit-put
+              editor
+              (igo-editor-mouse-event-to-board-xy editor move-event)
+              mark-type nil)))))))))
+
+(defun igo-editor-mark-edit-put (editor xy mark-type text)
+  (when xy
+    (let* ((pos (igo-board-xy-to-pos (igo-editor-board editor) (car xy) (cdr xy)))
+           (curr-node (igo-editor-current-node editor))
+           (changed (if mark-type
+                        ;; Put
+                        (igo-node-set-mark-at curr-node pos mark-type text)
+                      ;; Delete
+                      (igo-node-delete-mark-at curr-node pos))))
+      ;; Update
+      (if changed
+          (igo-editor-update-on-modified editor))
+      changed)))
 
 ;; Editor - Comment
 
@@ -1568,17 +1603,17 @@
                   (if on-move (funcall on-move event))
                 ;; out of target
                 (if on-up (funcall on-leave event))
-                (setq result 'leave)))
+                (setq result event)))
              ;; mouse up
              ((and (eq (event-basic-type event) down-basic-type)
                    (or (memq 'click (event-modifiers event))
                        (memq 'drag (event-modifiers event))))
               (if on-up (funcall on-up event))
-              (setq result 'up))
+              (setq result event))
              ;; otherwise
              (t
               (if on-up (funcall on-up event))
-              (setq result 'unknown-event)
+              (setq result event)
               (push (cons t event) unread-command-events)))))
         result))))
 
