@@ -713,7 +713,8 @@
 
 (defun igo-node-set-last-visited (node next-node)
   ;; check next-node is in next-nodes
-  (if (seq-find (lambda (n) (eq n next-node)) (igo-node-next-nodes node))
+  (if (or (null next-node)
+          (seq-find (lambda (n) (eq n next-node)) (igo-node-next-nodes node)))
       (aset node igo-node--idx-last-visited next-node)))
 
 (defun igo-node-next-node-default (node)
