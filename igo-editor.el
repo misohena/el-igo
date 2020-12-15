@@ -422,12 +422,12 @@
         (let ((text (igo-editor-game-to-sgf-string game))
               (begin (overlay-start ov))
               (end (overlay-end ov)))
-          (when (not (string= text (buffer-substring-no-properties begin end))) ;;need to modify?
-            ;; Record last update text
-            (igo-editor--last-buffer-text-set editor text)
-            ;; Replace text from BEGIN to END
-            (with-current-buffer
-                (overlay-buffer ov)
+          (with-current-buffer
+              (overlay-buffer ov)
+            (when (not (string= text (buffer-substring-no-properties begin end))) ;;need to modify?
+              ;; Record last update text
+              (igo-editor--last-buffer-text-set editor text)
+              ;; Replace text from BEGIN to END
               (igo-editor-replace-buffer-text begin end text)))))))
 
 (defun igo-editor-update-buffer-text-forced (editor &optional game)
