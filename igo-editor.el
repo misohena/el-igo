@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'widget)
 (require 'igo-model)
 (require 'igo-sgf-parser)
 (require 'igo-view)
@@ -169,6 +170,12 @@
         (if game
             (igo-game-current-node game)))))
 
+(defun igo-editor-root-node (editor)
+  (if editor
+      (let ((game (igo-editor-game editor)))
+        (if game
+            (igo-game-root-node game)))))
+
 ;; Editor - Properties
 
 (defun igo-editor-get-property (editor key)
@@ -268,6 +275,7 @@
     (define-key km (kbd "s b") #'igo-editor-toggle-branch-text)
     ;; edit
     (define-key km "c" #'igo-editor-edit-comment)
+    (define-key km "g" #'igo-editor-edit-game-info)
     (define-key km (kbd "C-c i") #'igo-editor-init-board)
     ;; menu
     (define-key km [igo-editor-menu mouse-1] #'igo-editor-main-menu)
@@ -337,6 +345,7 @@
            (igo-editor-free-edit-mode menu-item "Free Edit" igo-editor-free-edit-mode)
            (igo-editor-mark-edit-mode menu-item "Mark Edit" igo-editor-mark-edit-mode)
            (igo-editor-edit-comment menu-item "Edit Comment" igo-editor-edit-comment)
+           (igo-editor-edit-game-info menu-item "Edit Game Info" igo-editor-edit-game-info)
            ))
 
 (defun igo-editor-main-menu (&optional editor)
@@ -1643,6 +1652,116 @@
 
         ;; Update editor
         (igo-editor-update editor))))
+
+;; Editor - Game Info
+
+(defvar igo-editor-game-info-buffer-name "*Go Game Information*")
+
+(defvar igo-editor-game-info-field-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km widget-field-keymap)
+    (define-key km (kbd "C-c C-c") 'igo-editor-edit-game-info--ok)
+    (define-key km (kbd "C-c C-k") 'igo-editor-edit-game-info--cancel)
+    km))
+
+(defvar igo-editor-game-info-local-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km widget-keymap)
+    (define-key km (kbd "C-c C-c") 'igo-editor-edit-game-info--ok)
+    (define-key km (kbd "C-c C-k") 'igo-editor-edit-game-info--cancel)
+    km))
+
+(defun igo-editor-edit-game-info (&optional editor)
+  (interactive)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+
+  (when-let ((root-node (igo-editor-root-node editor)))
+    (switch-to-buffer igo-editor-game-info-buffer-name)
+    (kill-all-local-variables)
+    (let ((inhibit-read-only t))
+      (erase-buffer))
+    (remove-overlays)
+
+    (setq-local igo-editor-edit-game-info--editor editor)
+
+    (widget-insert "Game Information\n\n")
+    (widget-insert " C-c C-c: OK\n")
+    (widget-insert " C-c C-k: Cancel\n\n")
+
+    (setq-local
+     igo-editor-edit-game-info--widgets
+     (igo-editor-edit-game-info--insert-property-widgets root-node))
+
+    (widget-create 'push-button :notify 'igo-editor-edit-game-info--ok
+                   "OK")
+    (widget-insert " ")
+    (widget-create 'push-button :notify 'igo-editor-edit-game-info--cancel
+                   "Cancel")
+    (widget-insert "\n")
+
+    (use-local-map igo-editor-game-info-local-keymap)
+    (widget-setup)
+    (widget-forward 1) ;;to first field
+    ))
+
+(defun igo-editor-edit-game-info--insert-property-widgets (root-node)
+  (let ((max-width (apply #'max
+                          (mapcar
+                           (lambda (prop)
+                             (string-width
+                              (igo-sgf-game-info-prop-title prop)))
+                           igo-sgf-game-info-properties)))
+        widgets)
+    (dolist (prop igo-sgf-game-info-properties)
+      (let* ((prop-id (igo-sgf-game-info-prop-id prop))
+             (prop-type (igo-sgf-game-info-prop-type prop))
+             (prop-title (igo-sgf-game-info-prop-title prop))
+             (prop-value (car (igo-node-get-sgf-property root-node prop-id)))
+             (indent (- max-width (string-width prop-title)))
+             (widget (widget-create
+                      ;;@todo support number, real (nullable)
+                      (cond
+                       ;;((eq prop-type 'number) 'integer)
+                       ;;((eq prop-type 'real) 'number)
+                       ((eq prop-type 'text) 'text)
+                       (t 'editable-field))
+                      :keymap igo-editor-game-info-field-keymap
+                      :size 13
+                      :format (format "%s%s: %%v" (make-string indent ? ) prop-title)
+                      (or prop-value ""))))
+        (push (cons prop-id widget) widgets)
+        (widget-insert "\n")
+        ))
+    widgets))
+
+(defun igo-editor-edit-game-info--cancel (&rest ignore)
+  (interactive)
+  (kill-buffer igo-editor-game-info-buffer-name))
+
+(defun igo-editor-edit-game-info--ok (&rest ignore)
+  (interactive)
+
+  (let* ((editor igo-editor-edit-game-info--editor)
+         (root-node (igo-editor-root-node editor)))
+    (dolist (prop igo-sgf-game-info-properties)
+      (let* ((prop-id (igo-sgf-game-info-prop-id prop))
+             (prop-type (igo-sgf-game-info-prop-type prop))
+             (widget (cdr (assoc prop-id igo-editor-edit-game-info--widgets)))
+             (value (widget-value widget)))
+
+        ;; convert value to string or nil
+        (cond
+         ((eq prop-type 'text) (setq value (igo-sgf-text value)))
+         (t (setq value (igo-sgf-simple-text value))))
+        (if (string= value "") (setq value nil))
+
+        ;; set or delete property if changed
+        (if (not (equal value (car (igo-node-get-sgf-property root-node prop-id))))
+            (if (null value)
+                (igo-node-delete-sgf-property root-node prop-id)
+              (igo-node-set-sgf-property root-node prop-id (list value))))))
+    (igo-editor-update-on-modified editor)
+    (kill-buffer igo-editor-game-info-buffer-name)))
 
 ;;
 ;; model

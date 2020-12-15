@@ -489,6 +489,43 @@ ex:
          ;; expand compose
          (igo-sgf-expand-compressed-point value w h))))
 
+;; Game Info Properties
+
+(defconst igo-sgf-game-info-properties
+  '(
+    ("CP" "Copyright")
+    ("US" "Enterer Name")
+    ("AN" "Annotator Name")
+    ("SO" "Source")
+    ("EV" "Event Name")
+    ("GN" "Game Name")
+    ("RO" "Round Number")
+    ("DT" "Date")
+    ("PC" "Place")
+    ("BT" "Black Team" :player black)
+    ("PB" "Black Player" :player black)
+    ("BR" "Black Rank" :player black)
+    ("WT" "White Team" :player white)
+    ("PW" "White Player" :player white)
+    ("WR" "White Rank" :player white)
+    ("RU" "Rule")
+    ("OT" "Overtime Method")
+    ("TM" "Time Limit" :type real)
+    ("HA" "Handicap Stones" :type number)
+    ("KM" "Komi" :type real)
+    ("RE" "Result")
+    ("ON" "Opening Moves")
+    ("GC" "Comment" :type text)
+    ))
+
+(defun igo-sgf-game-info-prop-id (prop)
+  (car prop))
+(defun igo-sgf-game-info-prop-title (prop)
+  (cadr prop))
+(defun igo-sgf-game-info-prop-type (prop)
+  (or (plist-get (cddr prop) :type) 'simpletext))
+
+
 ;;
 ;; Convert to igo-node
 ;;
