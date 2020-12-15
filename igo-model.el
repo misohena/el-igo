@@ -747,7 +747,7 @@
 (defun igo-node-delete-next (node target-node)
   ;; remove TARGET-NODE from next-nodes
   (aset node igo-node--idx-next-nodes
-        (seq-remove (lambda (next) (eq next target-node)) (igo-node-next-nodes node)))
+        (delq target-node (igo-node-next-nodes node)))
   ;; ensure last-visited does not point to NODE
   (if (eq target-node (igo-node-last-visited node))
       (igo-node-set-last-visited node (car (igo-node-next-nodes node)))))
