@@ -1129,6 +1129,12 @@
              (not (igo-game-empty-undo-p game)))
     (igo-game-undo game)))
 
+(defun igo-game-undo-to (game ancester)
+  (while (and (or (not (igo-node-root-p (igo-game-current-node game)))
+                  (not (igo-game-empty-undo-p game)))
+              (not (eq (igo-game-current-node game) ancester)))
+    (igo-game-undo game)))
+
 ;; Game - Game Tree
 
 (defun igo-game-root-node (game)

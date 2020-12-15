@@ -1049,11 +1049,16 @@
                (pos (plist-get ev :pos))
                (game (igo-editor-game editor))
                (curr-node (igo-game-current-node game))
-               (clicked-node (seq-find (lambda (nn) (= (igo-node-move nn) pos))
-                                       (igo-node-next-nodes curr-node))))
-          (if clicked-node
-              (igo-editor-move-mode-branch-click-r editor curr-node clicked-node)
-)))))
+               clicked-node)
+          (cond
+           ((setq clicked-node
+                  (seq-find (lambda (nn) (= (igo-node-move nn) pos))
+                            (igo-node-next-nodes curr-node)))
+            (igo-editor-move-mode-branch-click-r editor curr-node clicked-node))
+           ((setq clicked-node
+                  (igo-node-find-move-back curr-node pos))
+            (igo-editor-move-mode-move-click-r editor curr-node clicked-node)))
+          ))))
 
 (defun igo-editor-pass-click-r ()
   (interactive)
@@ -1089,6 +1094,41 @@
                            (if (igo-node-change-next-node-order curr-node clicked-node 1)
                                (igo-editor-update-on-modified editor))))))))))
         (and fun (funcall fun)))))
+
+(defun igo-editor-move-mode-move-click-r (editor curr-node clicked-node)
+  (if (and editor curr-node clicked-node)
+      (let* ((menu `(keymap
+                     "Move"
+                     (igo-editor-move-mode-undo-to
+                      menu-item "Back to This Move"
+                      igo-editor-move-mode-undo-to
+                      :enable ,(not (eq curr-node clicked-node)))
+                     (igo-editor-move-mode-delete-move
+                      menu-item "Delete This Move and After"
+                      igo-editor-move-mode-delete-move
+                      :enable ,(and (not (igo-node-root-p clicked-node))
+                                    (igo-editor-editable-p editor)))))
+             (events (x-popup-menu last-input-event menu)))
+        (if (functionp (car events))
+            (funcall (car events) editor clicked-node)))))
+
+(defun igo-editor-move-mode-undo-to (editor clicked-node)
+  (igo-game-undo-to (igo-editor-game editor) clicked-node)
+  (igo-editor-update-image editor))
+
+(defun igo-editor-move-mode-delete-move (editor clicked-node)
+  (when (igo-editor-editable-p editor t)
+    (if (igo-node-root-p clicked-node)
+        (error "Cannot delete root node."))
+
+    (igo-game-undo-to (igo-editor-game editor) clicked-node)
+    (when (not (eq (igo-editor-current-node editor) clicked-node))
+      (igo-editor-update-image editor)
+      (error "Failed to reach the CLICKED-NODE"))
+    (igo-game-undo (igo-editor-game editor))
+
+    (igo-node-delete-next (igo-editor-current-node editor) clicked-node)
+    (igo-editor-update-on-modified editor)))
 
 (defun igo-editor-put-stone (editor pos)
   (interactive
