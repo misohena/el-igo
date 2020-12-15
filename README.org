@@ -155,6 +155,8 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 | e, >\vert{}ボタンクリック | 最後へ(デフォルト選択でたどれる所まで) | igo-editor-last-node          |
 | b, <ボタンクリック        | 前へ                                   | igo-editor-previous-node      |
 | f, >ボタンクリック        | 次へ(デフォルト選択でたどれる場合)     | igo-editor-next-node          |
+| M-b                       | 前の分岐地点へ                         | igo-editor-previous-fork      |
+| M-f                       | 次の分岐地点へ                         | igo-editor-next-fork          |
 | n                         | 次の盤面を分岐の中から選択して表示     | igo-editor-select-next-node   |
 |---------------------------+----------------------------------------+-------------------------------|
 | Q                         | 着手モード                             | igo-editor-move-mode          |

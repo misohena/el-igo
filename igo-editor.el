@@ -252,6 +252,8 @@
     (define-key km "b" #'igo-editor-previous-node)
     (define-key km "f" #'igo-editor-next-node)
     (define-key km "n" #'igo-editor-select-next-node)
+    (define-key km (kbd "M-f") #'igo-editor-next-fork)
+    (define-key km (kbd "M-b") #'igo-editor-previous-fork)
     (define-key km [igo-editor-first mouse-1] #'igo-editor-first-node)
     (define-key km [igo-editor-previous mouse-1] #'igo-editor-previous-node)
     (define-key km [igo-editor-forward mouse-1] #'igo-editor-next-node)
@@ -913,6 +915,37 @@
                     (igo-editor-update-image editor)
                     (igo-editor-show-comment editor))
                 (message "Out of range.")))))))))
+
+(defun igo-editor-next-fork (&optional editor)
+  (interactive)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+
+  (if editor
+      (if-let ((game (igo-editor-game editor)))
+          (when (igo-node-next-node-default (igo-game-current-node game))
+            (igo-game-redo game) ;;The only one node or last visited node
+            (while (= (length (igo-node-next-nodes
+                               (igo-game-current-node game)))
+                      1)
+              (igo-game-redo game)) ;;The only one node
+
+            (igo-editor-update-image editor)
+            (igo-editor-show-comment editor)))))
+
+(defun igo-editor-previous-fork (&optional editor)
+  (interactive)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+  (if editor
+      (if-let ((game (igo-editor-game editor)))
+          (when (not (igo-node-root-p (igo-game-current-node game)))
+            (igo-game-undo game)
+            (while (and (not (igo-node-root-p (igo-game-current-node game)))
+                        (<= (length (igo-node-next-nodes
+                                     (igo-game-current-node game)))
+                            1))
+              (igo-game-undo game))
+            (igo-editor-update-image editor)
+            (igo-editor-show-comment editor)))))
 
 (defun igo-editor-find-by-queries (editor queries)
   (if editor
