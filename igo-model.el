@@ -667,6 +667,14 @@
     (if prev (length (igo-node-next-nodes prev))
       1)))
 
+(defun igo-node-first-sibling-p (node)
+  (let ((prev (igo-node-prev node)))
+    (if prev (eq (car (igo-node-next-nodes prev)) node))))
+
+(defun igo-node-last-sibling-p (node)
+  (let ((prev (igo-node-prev node)))
+    (if prev (eq (car (last (igo-node-next-nodes prev))) node))))
+
 (defun igo-node-move-number (node)
   "Return the depth of NODE from the root node, do not include setup node."
   (let ((num 0))

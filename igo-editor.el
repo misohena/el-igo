@@ -1068,32 +1068,51 @@
         (igo-editor-move-mode-branch-click-r
          editor curr-node (igo-node-find-next-by-move curr-node igo-pass)))))
 
+
 (defun igo-editor-move-mode-branch-click-r (editor curr-node clicked-node)
   (if (and editor curr-node clicked-node)
-      (let ((fun (x-popup-menu
-                  last-input-event
-                  `("Branch"
-                    ("Branch"
-                     ("Put Here" .
-                      ,(lambda ()
-                         (if (igo-game-apply-node (igo-editor-game editor) clicked-node)
-                             (igo-editor-update-image editor))))
-                     ("Delete This Branch" .
-                      ,(lambda ()
-                         (when (igo-editor-editable-p editor t)
-                           (igo-node-delete-next curr-node clicked-node)
-                           (igo-editor-update-on-modified editor))))
-                     ("Change Order to Previous" .
-                      ,(lambda ()
-                         (when (igo-editor-editable-p editor t)
-                           (if (igo-node-change-next-node-order curr-node clicked-node -1)
-                               (igo-editor-update-on-modified editor)))))
-                     ("Change Order to Next" .
-                      ,(lambda ()
-                         (when (igo-editor-editable-p editor t)
-                           (if (igo-node-change-next-node-order curr-node clicked-node 1)
-                               (igo-editor-update-on-modified editor))))))))))
-        (and fun (funcall fun)))))
+      (let* ((menu `(keymap
+                     "Branch"
+                     (igo-editor-move-mode-select-branch
+                      menu-item "Put Here"
+                      igo-editor-move-mode-select-branch)
+                     (igo-editor-move-mode-delete-branch
+                      menu-item "Delete This Branch"
+                      igo-editor-move-mode-delete-branch
+                      :enable ,(igo-editor-editable-p editor))
+                     (igo-editor-move-mode-change-order-to-prev
+                      menu-item "Change Order to Previous"
+                      igo-editor-move-mode-change-order-to-prev
+                      :enable ,(and (igo-editor-editable-p editor)
+                                    (not (igo-node-first-sibling-p clicked-node))))
+                     (igo-editor-move-mode-change-order-to-next
+                      menu-item "Change Order to Next"
+                      igo-editor-move-mode-change-order-to-next
+                      :enable ,(and (igo-editor-editable-p editor)
+                                    (not (igo-node-last-sibling-p clicked-node))))))
+             (events (x-popup-menu last-input-event menu)))
+        (if (functionp (car events))
+            (funcall (car events) editor curr-node clicked-node)))))
+
+(defun igo-editor-move-mode-select-branch (editor curr-node clicked-node)
+  (if (igo-game-apply-node (igo-editor-game editor) clicked-node)
+      (igo-editor-update-image editor)))
+
+(defun igo-editor-move-mode-delete-branch (editor curr-node clicked-node)
+  (when (igo-editor-editable-p editor t)
+    (igo-node-delete-next curr-node clicked-node)
+    (igo-editor-update-on-modified editor)))
+
+(defun igo-editor-move-mode-change-order-to-prev (editor curr-node clicked-node)
+  (when (igo-editor-editable-p editor t)
+    (if (igo-node-change-next-node-order curr-node clicked-node -1)
+        (igo-editor-update-on-modified editor))))
+
+(defun igo-editor-move-mode-change-order-to-next (editor curr-node clicked-node)
+  (when (igo-editor-editable-p editor t)
+    (if (igo-node-change-next-node-order curr-node clicked-node 1)
+        (igo-editor-update-on-modified editor))))
+
 
 (defun igo-editor-move-mode-move-click-r (editor curr-node clicked-node)
   (if (and editor curr-node clicked-node)
