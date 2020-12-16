@@ -1082,7 +1082,7 @@
   (igo-board-turn (igo-game-board game)))
 (defun igo-game-set-turn (game color)
   (igo-board-set-turn (igo-game-board game) color))
-(defun igo-game-get-prisoners (color)
+(defun igo-game-get-prisoners (game color)
   (igo-board-get-prisoners (igo-game-board game) color))
 
 ;; Game - Move
