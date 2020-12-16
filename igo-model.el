@@ -1220,7 +1220,7 @@
    ((igo-node-placement-p next-node) (igo-game-put-stone game (igo-node-move next-node)))
    ((igo-node-setup-p next-node) ;; setup node
     ;; @todo check current-node contains next-node
-    (let* ((change (igo-node-get-setup-property node))
+    (let* ((change (igo-node-get-setup-property next-node))
            ;; Create undo data
            (undo-change (if change
                             (igo-board-changes-make-changes-undo
