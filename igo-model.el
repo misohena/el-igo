@@ -117,6 +117,17 @@
 (defconst igo-board--idx-prisoners 4)
 (defconst igo-board--idx-ko-pos 5)
 
+(defun igo-board-clone (board)
+  (let ((w (igo-board-w board))
+        (h (igo-board-h board)))
+    (igo-board
+     w h
+     (copy-sequence (igo-board-intersections board))
+     (igo-board-turn board)
+     (cons (igo-board-get-black-prisoners board)
+           (igo-board-get-white-prisoners board))
+     (igo-board-ko-pos board))))
+
 (defun igo-board-validate-w (w)
   (if (not (and (integerp w) (> w 0) (<= w 52)))
       (error "Invalid argument igo-board w=%s" w)))
@@ -216,6 +227,10 @@
   (cond
    ((igo-black-p color) (car (igo-board-prisoners board)))
    ((igo-white-p color) (cdr (igo-board-prisoners board)))))
+(defun igo-board-get-black-prisoners (board)
+  (car (igo-board-prisoners board)))
+(defun igo-board-get-white-prisoners (board)
+  (cdr (igo-board-prisoners board)))
 
 ;; Board - Move
 
@@ -251,7 +266,7 @@
       (igo-board-set-ko-pos board ko-pos-new)
       (igo-board-rotate-turn board)
       ;; return undo data
-      (igo-board-changes-make-undo-move color pos removed-stones ko-pos-old))))
+      (igo-board-changes-make-move-undo color pos removed-stones ko-pos-old))))
 
 (defun igo-board-legal-move-p (board pos color)
   (and
@@ -519,13 +534,59 @@
 
 ;; BoardChange - Creation
 
-;; TEST
-;; (igo-board-changes-make-undo-change 
-;;  (igo-board-changes '(1 2 3) nil nil nil 'white 2 0)
-;;  (let ((board (igo-board 9 9))) (igo-board-put-stone board 2 'black) (igo-board-put-stone board 3 'white) board))
-;; => [nil (3) (1) nil black -2 nil]
+(defun igo-board-changes-diff-board (to-board from-board)
+  "Return a igo-board-changes that change from FROM-BOARD to TO-BOARD."
+  (let ((pos-lists (igo-board-changes--diff-intersections to-board from-board)))
+    (igo-board-changes
+     (cdr (assq 'black pos-lists))
+     (cdr (assq 'white pos-lists))
+     (cdr (assq 'empty pos-lists))
+     (igo-board-changes--diff-value
+      to-board from-board 'igo-board-ko-pos '=)
+     (igo-board-changes--diff-value
+      to-board from-board 'igo-board-turn 'igo-same-color-p)
+     (igo-board-changes--diff-integer-delta
+      to-board from-board 'igo-board-get-black-prisoners)
+     (igo-board-changes--diff-integer-delta
+      to-board from-board 'igo-board-get-white-prisoners))))
 
-(defun igo-board-changes-make-undo-move (color pos removed-stones ko-pos-old)
+(defun igo-board-changes--diff-intersections (to-board from-board)
+  (if (or (/= (igo-board-w to-board) (igo-board-w from-board))
+          (/= (igo-board-h to-board) (igo-board-h from-board)))
+      (error "Board sizes not match"))
+  (let ((pos-lists (list (cons 'black nil)
+                         (cons 'white nil)
+                         (cons 'empty nil)))
+        (num-intersections (igo-board-intersection-count to-board)))
+    (dotimes (pos num-intersections)
+      (let ((to-istate (igo-board-get-at to-board pos))
+            (from-istate (igo-board-get-at from-board pos)))
+        (if (not (igo-same-intersection-state-p to-istate from-istate))
+            (let ((pos-list (assq to-istate pos-lists)))
+              (push pos (cdr pos-list))))))
+    (dolist (cell pos-lists)
+      (setcdr cell (nreverse (cdr cell))))
+    pos-lists))
+
+(defun igo-board-changes--diff-value (to-board from-board getter fun-equal)
+  (let ((to-value (funcall getter to-board))
+        (from-value (funcall getter from-board)))
+    (if (not (funcall fun-equal to-value from-value)) to-value)))
+
+(defun igo-board-changes--diff-integer-delta (to-board from-board getter)
+  (let ((to-value (funcall getter to-board))
+        (from-value (funcall getter from-board)))
+    (if (/= to-value from-value)
+        (- to-value from-value))))
+
+(defun igo-board-changes-make-initial-board (board)
+  "Return a igo-board-changes that create BOARD from empty board."
+  (igo-board-changes-diff-board
+   board
+   (igo-board (igo-board-w board) (igo-board-h board))))
+
+(defun igo-board-changes-make-move-undo (color pos removed-stones ko-pos-old)
+  "Return a igo-board-changes that revert move."
   (igo-board-changes
    (if (igo-white-p color) removed-stones nil)
    (if (igo-black-p color) removed-stones nil)
@@ -535,53 +596,17 @@
    (if (and (igo-white-p color) removed-stones) (- (length removed-stones)) nil)
    (if (and (igo-black-p color) removed-stones) (- (length removed-stones)) nil)))
 
-(defun igo-board-changes-make-undo-change (changes board)
-  "Return a board-change undo (igo-board-changes-apply CHANGES BOARD)."
-  (let ((colors-positions (list (list 'black) (list 'white) (list 'empty))))
-    (igo-board-changes--make-undo-intersections
-     (igo-board-changes-black changes) 'black board colors-positions)
-    (igo-board-changes--make-undo-intersections
-     (igo-board-changes-white changes) 'white board colors-positions)
-    (igo-board-changes--make-undo-intersections
-     (igo-board-changes-empty changes) 'empty board colors-positions)
+;; TEST
+;; (igo-board-changes-make-changes-undo 
+;;  (igo-board-changes '(1 2 3) nil nil nil 'white 2 0)
+;;  (let ((board (igo-board 9 9))) (igo-board-put-stone board 2 'black) (igo-board-put-stone board 3 'white) board))
+;; => [(nil (3) (1)) nil black -2 nil]
 
-    (igo-board-changes
-     (nreverse (cdr (assq 'black colors-positions)))
-     (nreverse (cdr (assq 'white colors-positions)))
-     (nreverse (cdr (assq 'empty colors-positions)))
-     (igo-board-changes--make-undo-value
-      #'= (igo-board-changes-ko-pos changes) (igo-board-ko-pos board))
-     (igo-board-changes--make-undo-value
-      #'eq (igo-board-changes-turn changes) (igo-board-turn board))
-     (igo-board-changes--make-undo-integer-delta
-      (igo-board-changes-black-prisoners changes))
-     (igo-board-changes--make-undo-integer-delta
-      (igo-board-changes-white-prisoners changes)))))
-
-(defun igo-board-changes--make-undo-value (func-eq new-value old-value)
-  (if (and new-value
-           (not (funcall func-eq new-value old-value)))
-      old-value))
-
-(defun igo-board-changes--make-undo-integer-delta (delta)
-  (if (and delta
-           (/= delta 0))
-      (- delta)))
-
-(defun igo-board-changes--make-undo-intersections (positions new-istate board colors-positions)
-  ;; ensure list
-  (if (integerp positions)
-      (setq positions (list positions)))
-
-  (if (and board
-           (igo-intersection-state-p new-istate)
-           (listp positions))
-      (dolist (pos positions)
-        (if (and (integerp pos) (igo-board-pos-on-board-p board pos))
-            (let ((old-istate (igo-board-get-at board pos)))
-              (when (igo-diff-intersection-state-p new-istate old-istate)
-                (push pos (cdr (assq old-istate colors-positions))))))))
-  colors-positions)
+(defun igo-board-changes-make-changes-undo (changes board)
+  "Return a igo-board-change that revert CHANGES."
+  (let ((to-board (igo-board-clone board)))
+    (igo-board-changes-apply changes to-board)
+    (igo-board-changes-diff-board board to-board)))
 
 
 ;;
@@ -1198,7 +1223,7 @@
     (let* ((change (igo-node-get-setup-property node))
            ;; Create undo data
            (undo-change (if change
-                            (igo-board-changes-make-undo-change
+                            (igo-board-changes-make-changes-undo
                              change (igo-game-board game)))))
       ;; apply change
       (if change
