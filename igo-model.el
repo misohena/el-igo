@@ -100,7 +100,7 @@
   (if (null h) (setq h igo-board-default-h)
     (igo-board-validate-h h))
   (if (null intersections) (setq intersections (make-vector (* w h) 'empty))
-    (igo-board-validate-intersections intersections))
+    (igo-board-validate-intersections intersections w h))
   (if (null turn) (setq turn 'black)
     (igo-board-validate-turn turn))
   (if (null prisoners) (setq prisoners (cons 0 0))
@@ -123,7 +123,7 @@
 (defun igo-board-validate-h (h)
   (if (not (and (integerp h) (> h 0) (<= h 52)))
       (error "Invalid argument igo-board h=%s" h)))
-(defun igo-board-validate-intersections (intersections)
+(defun igo-board-validate-intersections (intersections w h)
   (if (not (and (vectorp intersections)
                 (= (length intersections) (* w h))
                 ;; all elements are valid
