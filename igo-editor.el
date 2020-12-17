@@ -275,6 +275,7 @@
     (define-key km (kbd "s b") #'igo-editor-toggle-branch-text)
     ;; edit
     (define-key km "c" #'igo-editor-edit-comment)
+    (define-key km "N" #'igo-editor-edit-move-number)
     (define-key km "g" #'igo-editor-edit-game-info)
     (define-key km (kbd "C-c i") #'igo-editor-init-board)
     ;; menu
@@ -345,6 +346,7 @@
            (igo-editor-free-edit-mode menu-item "Free Edit" igo-editor-free-edit-mode)
            (igo-editor-mark-edit-mode menu-item "Mark Edit" igo-editor-mark-edit-mode)
            (igo-editor-edit-comment menu-item "Edit Comment" igo-editor-edit-comment)
+           (igo-editor-edit-move-number menu-item "Edit Move Number" igo-editor-edit-move-number)
            (igo-editor-edit-game-info menu-item "Edit Game Info" igo-editor-edit-game-info)
            ))
 
@@ -1632,6 +1634,30 @@
           (when comment
             (message "%s" comment)
             t)))))
+
+;; Editor - Move Number
+
+(defun igo-editor-edit-move-number (&optional editor)
+  (interactive)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+
+  (if-let ((curr-node (igo-editor-current-node editor)))
+      (if (igo-editor-editable-p editor)
+          ;; editable
+          (let* ((old-mn (igo-node-get-move-number-property curr-node))
+                 (new-mn-str (read-from-minibuffer "Move Number(or Empty): " (if old-mn (number-to-string old-mn) "")))
+                 (new-mn (if (string= new-mn-str "") nil (string-to-number new-mn-str))))
+            (when (not (equal new-mn old-mn))
+              (if (null new-mn)
+                  (igo-node-delete-move-number-property curr-node)
+                (igo-node-set-move-number-property curr-node new-mn))
+              (igo-editor-update-on-modified editor)))
+        ;; not editable
+        (let ((mn (igo-node-get-move-number-property curr-node)))
+          (if mn
+              (message "Board is read only. (Move number property is %s)" mn)
+            (message "Board is read only. (No move number property)"))))))
+
 
 ;; Editor - Initialize
 

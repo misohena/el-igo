@@ -701,13 +701,13 @@
     (if prev (eq (car (last (igo-node-next-nodes prev))) node))))
 
 (defun igo-node-move-number (node)
-  "Return the depth of NODE from the root node, do not include setup node."
-  (let ((num 0))
-    (while node
+  "Return the depth of NODE from the root node or previous MN property, not include setup node."
+  (let ((num 0) mn-prop)
+    (while (and node (null (setq mn-prop (igo-node-get-move-number-property node))))
       (if (igo-node-move-p node)
           (setq num (1+ num)))
       (setq node (igo-node-prev node)))
-    num))
+    (+ (or mn-prop 0) num)))
 
 (defun igo-node-depth (node)
   "Return the depth of NODE from the root node, including setup node."
@@ -910,6 +910,21 @@
   (if (stringp symbol)
       (setq symbol (intern symbol)))
   (or (plist-get (igo-node-properties node) symbol) default))
+
+;; Node - Properties - Move Number
+
+(defun igo-node-get-move-number-property (node)
+  (let ((str (car (igo-node-get-sgf-property node "MN"))))
+    (if (stringp str)
+        (string-to-number str))))
+
+(defun igo-node-set-move-number-property (node number)
+  (igo-node-set-sgf-property
+   node "MN" (number-to-string number)))
+
+(defun igo-node-delete-move-number-property (node)
+  (igo-node-delete-sgf-property node "MN"))
+
 
 ;; Node - Properties - Comment
 

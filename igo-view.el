@@ -367,9 +367,13 @@ height.")
                              (t "#000"))))
                 (igo-svg-move-number svg x y grid-interval move-number color)))))
       ;; previous node
-      (if (igo-node-move-p node)
-          (setq move-number (1- move-number)))
-      (setq node (igo-node-prev node)))))
+      (let ((prev (igo-node-prev node))
+            (mn (igo-node-get-move-number-property node)))
+        (setq move-number
+              (cond
+               ((and prev mn) (igo-node-move-number prev)) ;; recalculate
+               ((igo-node-move-p node) (1- move-number)))) ;; decrement
+        (setq node prev)))))
 
 (defun igo-svg-remove-move-numbers (svg)
   ;;@todo 1.get (igo-svg-move-numbers-group svg), 2.delete children(class="mvnum")

@@ -168,6 +168,7 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 | s b                       | 分岐表示切り替え                       | igo-editor-toggle-branch-text |
 |---------------------------+----------------------------------------+-------------------------------|
 | c                         | コメントの編集                         | igo-editor-edit-comment       |
+| N                         | 手順番号の編集                         | igo-editor-edit-move-number   |
 | g                         | 対局情報の編集                         | igo-editor-edit-game-info     |
 | C-c i                     | 盤面の初期化                           | igo-editor-init-board         |
 
