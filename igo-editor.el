@@ -294,6 +294,8 @@
     (define-key km [igo-grid mouse-3] #'igo-editor-move-mode-board-click-r)
     (define-key km [igo-grid wheel-up] #'igo-editor-previous-node)
     (define-key km [igo-grid wheel-down] #'igo-editor-next-node)
+    (define-key km [igo-setup-nodes-area mouse-1] #'igo-editor-setup-nodes-area-click)
+    (define-key km [igo-setup-nodes-area mouse-3] #'igo-editor-setup-nodes-area-click-r)
     km))
 
 (defvar igo-editor-free-edit-mode-map
@@ -668,6 +670,52 @@
    (igo-board-view-clickable-height board-view)
    image-scale))
 
+;; Editor - Image - Properties
+
+(defun igo-editor-set-property-and-update-image
+    (editor key value &optional recreate)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+  (when editor
+    (igo-editor-set-property editor key value)
+    (igo-editor-update-image editor recreate)))
+
+(defun igo-editor-toggle-property-and-update-image
+    (editor key &optional recreate)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+  (when editor
+    (igo-editor-set-property-and-update-image
+     editor
+     key
+     (not (igo-editor-get-property editor key))
+     recreate)))
+
+(defun igo-editor-set-status-bar-visible (editor visible)
+  ;;needs recreate image
+  (igo-editor-set-property-and-update-image editor :show-status-bar visible t))
+
+(defun igo-editor-set-move-number-visible (editor visible)
+  (igo-editor-set-property-and-update-image editor :show-move-number visible))
+
+(defun igo-editor-set-branch-text-visible (editor visible)
+  (igo-editor-set-property-and-update-image editor :show-branches visible))
+
+(defun igo-editor-toggle-status-bar (&optional editor)
+  (interactive)
+  (igo-editor-toggle-property-and-update-image
+   editor :show-status-bar t));;needs recreate image
+
+(defun igo-editor-toggle-move-number (&optional editor)
+  (interactive)
+  (igo-editor-toggle-property-and-update-image
+   editor :show-move-number))
+
+(defun igo-editor-toggle-branch-text (&optional editor)
+  (interactive)
+  (igo-editor-toggle-property-and-update-image
+   editor :show-branches))
+
+;; Editor - Image - Status Bar
+
 (defun igo-editor-create-status-bar (editor svg board)
   (let* ((bar-w (igo-editor-board-pixel-w editor))
          (bar (igo-ui-create-bar svg
@@ -739,22 +787,36 @@
          :text-anchor "middle" :fill "#fff" :id "status-move-number")
         ))))
 
+;; Editor - Image - Branch Text
+
 (defun igo-editor-update-branches-text (editor)
   (let* ((game (igo-editor-game editor))
          (board (igo-game-board game))
          (board-view (igo-editor-board-view editor))
          (svg (igo-editor-svg editor))
          (image-map (igo-editor-image-map editor))
-         (curr-node (igo-game-current-node game)))
+         (curr-node (igo-game-current-node game))
+         (setup-node-index 0))
     (igo-board-view-update-branches
      board-view
      svg
      (igo-editor-get-property editor :show-branches)
      board curr-node
-     ;; called when branch is pass
+     ;; Called when branch is pass
      (lambda (index num-nodes text text-color turn class-name)
        (igo-editor-put-branch-text-on-button
-        svg image-map board-view 'igo-editor-pass text text-color turn class-name)))))
+        svg image-map board-view 'igo-editor-pass text text-color turn class-name))
+     ;; Called when branch is resign
+     nil
+     ;; Called when branch is setup node
+     (lambda (index num-nodes text text-color turn class-name)
+       (igo-editor-setup-nodes-area-put-branch-text
+        editor
+        svg setup-node-index text text-color turn class-name)
+       (setq setup-node-index (1+ setup-node-index))))
+
+    ;; update clickable rect for setup nodes
+    (igo-editor-setup-nodes-area-update-image-map editor setup-node-index)))
 
 (defun igo-editor-put-branch-text-on-button (svg image-map board-view button-id text text-color turn class-name)
   (let ((xy (igo-ui-left-top-of-clickable-area image-map button-id)))
@@ -771,48 +833,81 @@
                          :fill (if (igo-black-p turn) "#ccc" "#444"))
           (igo-svg-text-on-board group x y grid-interval text text-color)))))
 
+;; Editor - Image - Branch Text - Setup Nodes Area
 
-(defun igo-editor-set-property-and-update-image
-    (editor key value &optional recreate)
-  (if (null editor) (setq editor (igo-editor-at-input)))
-  (when editor
-    (igo-editor-set-property editor key value)
-    (igo-editor-update-image editor recreate)))
+(defun igo-editor-setup-nodes-area-update-image-map (editor num-setup-nodes)
+  (igo-ui-remove-clickable-area
+   image-map 'igo-setup-nodes-area)
+  (if (> num-setup-nodes 0)
+      (igo-ui-push-clickable-rect
+       image-map 'igo-setup-nodes-area
+       (igo-editor-setup-nodes-area-left editor)
+       (igo-editor-setup-nodes-area-top editor)
+       (igo-editor-setup-nodes-area-width editor num-setup-nodes)
+       (igo-editor-setup-nodes-area-height editor)
+       (igo-editor-image-scale editor))))
 
-(defun igo-editor-toggle-property-and-update-image
-    (editor key &optional recreate)
-  (if (null editor) (setq editor (igo-editor-at-input)))
-  (when editor
-    (igo-editor-set-property-and-update-image
-     editor
-     key
-     (not (igo-editor-get-property editor key))
-     recreate)))
+(defun igo-editor-setup-nodes-area-text-x (editor index)
+  (let ((board-view (igo-editor-board-view editor)))
+    (+ (igo-board-view-margin board-view)
+       (* (igo-board-view-interval board-view) index))))
 
-(defun igo-editor-set-status-bar-visible (editor visible)
-  ;;needs recreate image
-  (igo-editor-set-property-and-update-image editor :show-status-bar visible t))
+(defun igo-editor-setup-nodes-area-text-y (editor)
+  (let ((board-view (igo-editor-board-view editor)))
+    (+ (igo-editor-board-top editor)
+       (igo-board-view-margin board-view)
+       (* (igo-board-view-interval board-view) (igo-board-view-h board-view)))))
 
-(defun igo-editor-set-move-number-visible (editor visible)
-  (igo-editor-set-property-and-update-image editor :show-move-number visible))
+(defun igo-editor-setup-nodes-area-left (editor)
+  (let ((board-view (igo-editor-board-view editor)))
+    (- (igo-board-view-margin board-view)
+       (/ (igo-board-view-interval board-view) 2))))
 
-(defun igo-editor-set-branch-text-visible (editor visible)
-  (igo-editor-set-property-and-update-image editor :show-branches visible))
+(defun igo-editor-setup-nodes-area-top (editor)
+  (let* ((board-view (igo-editor-board-view editor))
+         (interval (igo-board-view-interval board-view)))
+    (+ (igo-editor-board-top editor)
+       (igo-board-view-margin board-view)
+       (* interval (igo-board-view-h board-view))
+       (- (/ interval 2)))))
 
-(defun igo-editor-toggle-status-bar (&optional editor)
-  (interactive)
-  (igo-editor-toggle-property-and-update-image
-   editor :show-status-bar t));;needs recreate image
+(defun igo-editor-setup-nodes-area-width (editor num-setup-nodes)
+  (let* ((board-view (igo-editor-board-view editor))
+         (interval (igo-board-view-interval board-view)))
+    (* interval num-setup-nodes)))
 
-(defun igo-editor-toggle-move-number (&optional editor)
-  (interactive)
-  (igo-editor-toggle-property-and-update-image
-   editor :show-move-number))
+(defun igo-editor-setup-nodes-area-height (editor)
+  (igo-board-view-interval (igo-editor-board-view editor)))
 
-(defun igo-editor-toggle-branch-text (&optional editor)
-  (interactive)
-  (igo-editor-toggle-property-and-update-image
-   editor :show-branches))
+(defun igo-editor-setup-nodes-area-x-to-index (editor x)
+  (/ (- x (igo-editor-setup-nodes-area-left editor))
+     (igo-board-view-interval (igo-editor-board-view editor))))
+
+(defun igo-editor-setup-nodes-area-put-branch-text (editor svg setup-node-index text text-color turn class-name)
+  (let* ((board-view (igo-editor-board-view editor))
+         (grid-interval (igo-board-view-interval board-view))
+         (font-size (igo-svg-font-size-on-board grid-interval))
+         (x (igo-editor-setup-nodes-area-text-x editor setup-node-index))
+         (y (igo-editor-setup-nodes-area-text-y editor))
+         (group (svg-node svg 'g :class class-name)))
+
+    (svg-rectangle group
+                   (- x (/ font-size 2))
+                   (- y (/ font-size 2))
+                   font-size font-size
+                   :fill (if (igo-black-p turn) "#ccc" "#444"))
+    (igo-svg-text-on-board group x y grid-interval text text-color)))
+
+(defun igo-editor-setup-nodes-area-get-input-node (editor)
+  "Return setup node where mouse event occurred."
+  (when (and editor
+             (igo-editor-game editor)
+             (mouse-event-p last-input-event))
+    (igo-node-get-next-setup-node
+     (igo-editor-current-node editor)
+     (igo-editor-setup-nodes-area-x-to-index
+      editor
+      (car (posn-object-x-y (event-start last-input-event)))))))
 
 ;; Editor - Input on Image
 
@@ -1124,6 +1219,21 @@
         (igo-editor-move-mode-branch-click-r
          editor curr-node (igo-node-find-next-by-move curr-node igo-pass)))))
 
+(defun igo-editor-setup-nodes-area-click ()
+  (interactive)
+  (let* ((editor (igo-editor-at-input))
+         (clicked-node (igo-editor-setup-nodes-area-get-input-node editor)))
+    (if clicked-node
+        (if (igo-game-apply-node (igo-editor-game editor) clicked-node)
+            (igo-editor-update-image editor)))))
+
+(defun igo-editor-setup-nodes-area-click-r ()
+  (interactive)
+  (let* ((editor (igo-editor-at-input))
+         (clicked-node (igo-editor-setup-nodes-area-get-input-node editor)))
+    (if clicked-node
+        (igo-editor-move-mode-branch-click-r
+         editor (igo-editor-current-node editor) clicked-node))))
 
 (defun igo-editor-move-mode-branch-click-r (editor curr-node clicked-node)
   (if (and editor curr-node clicked-node)
@@ -1438,14 +1548,14 @@
                                    delete-from-changes
                                    initial-value)
   "Add setup value to setup property of current node."
+
+  ;; Ensure the current node is a setup node.
+  ;; (If the current node is not a setup node, add a new setup node
+  ;; or error occur)
+  (igo-editor-ensure-current-node-is-setup-node editor)
+
   (let* ((game (igo-editor-game editor))
          (curr-node (igo-game-current-node game)))
-
-    ;; Ensure current node is a setup node
-    ;;@todo insert setup node
-    (if (not (igo-node-setup-p curr-node))
-        (error "Not root node."))
-
     (when (igo-node-setup-p curr-node)
 
       (let* ((setup-changes (igo-node-get-setup-property curr-node))
@@ -1491,6 +1601,13 @@
               (funcall set-to-changes undo-changes curr-value)
               (funcall set-to-game game new-value)
               t)))))))
+
+(defun igo-editor-ensure-current-node-is-setup-node (editor)
+  (if (and editor (igo-editor-game editor))
+      (if (not (igo-node-setup-p (igo-editor-current-node editor)))
+          (if (y-or-n-p "The current node is not a setup node. Would you like to add a new setup node?")
+              (igo-game-add-setup-node (igo-editor-game editor))
+            (error "The current node is not a setup node.")))))
 
 ;; Editor - Mark Edit Mode
 

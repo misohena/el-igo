@@ -794,6 +794,17 @@
   (seq-find (lambda (next) (= (igo-node-move next) move))
             (igo-node-next-nodes node)))
 
+(defun igo-node-get-next-setup-node (node index)
+  (let ((next-nodes (igo-node-next-nodes node))
+        result)
+    (while (and next-nodes (null result))
+      (if (igo-node-setup-p (car next-nodes))
+          (if (= index 0)
+              (setq result (car next-nodes))
+            (setq index (1- index))))
+      (setq next-nodes (cdr next-nodes)))
+    result))
+
 (defun igo-node-add-next-node (node next-node)
   (aset node igo-node--idx-next-nodes
         (nconc (igo-node-next-nodes node)
@@ -1166,6 +1177,15 @@
        (not (igo-game-finished-p game))
        (igo-board-legal-move-p (igo-game-board game) pos (igo-game-turn game))))
 
+;; Game - Setup Node
+
+(defun igo-game-add-setup-node (game)
+  "Add a setup node to the current node. And change the current node to it."
+  (when game
+    (igo-game-push-undo game (igo-board-changes nil nil nil nil nil nil nil))
+    (igo-game-push-node game igo-nmove)
+    t))
+
 ;; Game - Undo
 
 (defun igo-game-clear-undo (game)
@@ -1226,7 +1246,7 @@
 (defun igo-game-push-node (game move)
   (let* ((curr-node (igo-game-current-node game))
          (next-node (or
-                     ;; If MOVE is nmove(setup node?), always add a new node
+                     ;; If MOVE is nmove(setup node), always add a new node
                      (if (igo-nmove-p move) (igo-node-create-next-node curr-node igo-nmove))
                      ;; If already added MOVE, use it
                      (igo-node-find-next-by-move curr-node move)
