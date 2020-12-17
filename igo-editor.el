@@ -1545,8 +1545,7 @@
          (down-event last-input-event)
          (down-xy (igo-editor-mouse-event-to-board-xy editor down-event)))
 
-    (when (and down-xy ;;edior != nil, game != nil, board != nil
-               (igo-editor-editable-p editor t))
+    (when down-xy ;;edior != nil, game != nil, board != nil
 
       (let ((mark-type (igo-editor-get-mode-property editor :mark-type)))
         (cond
@@ -1588,7 +1587,7 @@
               mark-type nil)))))))))
 
 (defun igo-editor-mark-edit-put (editor xy mark-type text)
-  (when xy
+  (when (and xy (igo-editor-editable-p editor t))
     (let* ((pos (igo-board-xy-to-pos (igo-editor-board editor) (car xy) (cdr xy)))
            (curr-node (igo-editor-current-node editor))
            (changed (if mark-type
@@ -1639,7 +1638,7 @@
 (defun igo-editor-init-board (&optional editor)
   (interactive)
   (if (null editor) (setq editor (igo-editor-at-input)))
-  (if editor
+  (if (and editor (igo-editor-editable-p editor t))
       (let* ((board (igo-editor-board editor))
              (default-w (if board (igo-board-w board) igo-board-default-w))
              (default-h (if board (igo-board-h board) igo-board-default-h))
@@ -1675,34 +1674,35 @@
   (interactive)
   (if (null editor) (setq editor (igo-editor-at-input)))
 
-  (when-let ((root-node (igo-editor-root-node editor)))
-    (switch-to-buffer igo-editor-game-info-buffer-name)
-    (kill-all-local-variables)
-    (let ((inhibit-read-only t))
-      (erase-buffer))
-    (remove-overlays)
+  (when (igo-editor-editable-p editor t)
+    (when-let ((root-node (igo-editor-root-node editor)))
+      (switch-to-buffer igo-editor-game-info-buffer-name)
+      (kill-all-local-variables)
+      (let ((inhibit-read-only t))
+        (erase-buffer))
+      (remove-overlays)
 
-    (setq-local igo-editor-edit-game-info--editor editor)
+      (setq-local igo-editor-edit-game-info--editor editor)
 
-    (widget-insert "Game Information\n\n")
-    (widget-insert " C-c C-c: OK\n")
-    (widget-insert " C-c C-k: Cancel\n\n")
+      (widget-insert "Game Information\n\n")
+      (widget-insert " C-c C-c: OK\n")
+      (widget-insert " C-c C-k: Cancel\n\n")
 
-    (setq-local
-     igo-editor-edit-game-info--widgets
-     (igo-editor-edit-game-info--insert-property-widgets root-node))
+      (setq-local
+       igo-editor-edit-game-info--widgets
+       (igo-editor-edit-game-info--insert-property-widgets root-node))
 
-    (widget-create 'push-button :notify 'igo-editor-edit-game-info--ok
-                   "OK")
-    (widget-insert " ")
-    (widget-create 'push-button :notify 'igo-editor-edit-game-info--cancel
-                   "Cancel")
-    (widget-insert "\n")
+      (widget-create 'push-button :notify 'igo-editor-edit-game-info--ok
+                     "OK")
+      (widget-insert " ")
+      (widget-create 'push-button :notify 'igo-editor-edit-game-info--cancel
+                     "Cancel")
+      (widget-insert "\n")
 
-    (use-local-map igo-editor-game-info-local-keymap)
-    (widget-setup)
-    (widget-forward 1) ;;to first field
-    ))
+      (use-local-map igo-editor-game-info-local-keymap)
+      (widget-setup)
+      (widget-forward 1) ;;to first field
+      )))
 
 (defun igo-editor-edit-game-info--insert-property-widgets (root-node)
   (let ((max-width (apply #'max
@@ -1743,25 +1743,26 @@
 
   (let* ((editor igo-editor-edit-game-info--editor)
          (root-node (igo-editor-root-node editor)))
-    (dolist (prop igo-sgf-game-info-properties)
-      (let* ((prop-id (igo-sgf-game-info-prop-id prop))
-             (prop-type (igo-sgf-game-info-prop-type prop))
-             (widget (cdr (assoc prop-id igo-editor-edit-game-info--widgets)))
-             (value (widget-value widget)))
+    (when (igo-editor-editable-p editor t)
+      (dolist (prop igo-sgf-game-info-properties)
+        (let* ((prop-id (igo-sgf-game-info-prop-id prop))
+               (prop-type (igo-sgf-game-info-prop-type prop))
+               (widget (cdr (assoc prop-id igo-editor-edit-game-info--widgets)))
+               (value (widget-value widget)))
 
-        ;; convert value to string or nil
-        (cond
-         ((eq prop-type 'text) (setq value (igo-sgf-text value)))
-         (t (setq value (igo-sgf-simple-text value))))
-        (if (string= value "") (setq value nil))
+          ;; convert value to string or nil
+          (cond
+           ((eq prop-type 'text) (setq value (igo-sgf-text value)))
+           (t (setq value (igo-sgf-simple-text value))))
+          (if (string= value "") (setq value nil))
 
-        ;; set or delete property if changed
-        (if (not (equal value (car (igo-node-get-sgf-property root-node prop-id))))
-            (if (null value)
-                (igo-node-delete-sgf-property root-node prop-id)
-              (igo-node-set-sgf-property root-node prop-id (list value))))))
-    (igo-editor-update-on-modified editor)
-    (kill-buffer igo-editor-game-info-buffer-name)))
+          ;; set or delete property if changed
+          (if (not (equal value (car (igo-node-get-sgf-property root-node prop-id))))
+              (if (null value)
+                  (igo-node-delete-sgf-property root-node prop-id)
+                (igo-node-set-sgf-property root-node prop-id (list value))))))
+      (igo-editor-update-on-modified editor)
+      (kill-buffer igo-editor-game-info-buffer-name))))
 
 ;;
 ;; model
