@@ -181,6 +181,7 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 | 盤面をクリック        | 石を置く                             | igo-editor-move-mode-board-click   |
 | Passボタン右クリック  | 着手「パス」に対するメニューを表示   | igo-editor-pass-click-r            |
 | 盤面を右クリック      | 交点(石や空点)に対するメニューを表示 | igo-editor-move-mode-board-click-r |
+| \dollar               | 現在の盤面をルートにする             | igo-editor-make-current-node-root  |
 
 *** フリー編集モード
 

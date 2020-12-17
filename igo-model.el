@@ -668,6 +668,35 @@
           (setq setup-color 'black))
       (if opposite (igo-opposite-color setup-color) setup-color))))
 
+;; Node - Make Root
+
+(defun igo-node-make-root (node board)
+  (when (not (igo-node-root-p node))
+    (let ((old-root-node (igo-node-get-root node)))
+      ;; Copy game info properties from old-root
+      ;; (if igo-sgf-parser loaded)
+      (if (boundp 'igo-sgf-game-info-properties)
+          (dolist (prop igo-sgf-game-info-properties)
+            (let* ((prop-id (igo-sgf-game-info-prop-id prop))
+                   (value (igo-node-get-sgf-property old-root-node prop-id)))
+              (if value
+                  (igo-node-set-sgf-property node prop-id value)))))
+      ;; Set move number property
+      (if (null (igo-node-get-move-number-property node))
+          (igo-node-set-move-number-property
+           node
+           (igo-node-move-number node)))
+      ;; Unlink previous node
+      (aset node igo-node--idx-prev nil)
+      ;; Clear move (indicate this node is a setup node)
+      (aset node igo-node--idx-move igo-nmove)
+      ;; Set setup property to reproduce BOARD (discard old setup if it exists)
+      (igo-node-set-setup-property
+       node
+       (igo-board-changes-make-initial-board board))
+      ))
+  node)
+
 ;; Node - Previous Node(Parent)
 
 (defun igo-node-root-p (node)
@@ -1139,6 +1168,9 @@
 
 ;; Game - Undo
 
+(defun igo-game-clear-undo (game)
+  (aset game igo-game--idx-undo nil))
+
 (defun igo-game-push-undo (game undo-change)
   (aset game igo-game--idx-undo
         (cons undo-change (aref game igo-game--idx-undo))))
@@ -1215,6 +1247,14 @@
           (aset game igo-game--idx-current-node (igo-node-prev curr-node))
           curr-node)
       nil)))
+
+(defun igo-game-make-current-node-root (game)
+  (let ((curr-node (igo-game-current-node game)))
+    ;; make current node root
+    (igo-node-make-root curr-node (igo-game-board game))
+    (aset game igo-game--idx-root-node curr-node)
+    ;; clear undo stack
+    (igo-game-clear-undo game)))
 
 ;; Game - Redo
 

@@ -287,6 +287,7 @@
     (set-keymap-parent km igo-editor-graphical-mode-map)
     (define-key km "P" #'igo-editor-pass)
     (define-key km "p" #'igo-editor-put-stone)
+    (define-key km "$" #'igo-editor-make-current-node-root)
     (define-key km [igo-editor-pass mouse-1] #'igo-editor-pass)
     (define-key km [igo-editor-pass mouse-3] #'igo-editor-pass-click-r)
     (define-key km [igo-grid mouse-1] #'igo-editor-move-mode-board-click)
@@ -348,6 +349,7 @@
            (igo-editor-edit-comment menu-item "Edit Comment" igo-editor-edit-comment)
            (igo-editor-edit-move-number menu-item "Edit Move Number" igo-editor-edit-move-number)
            (igo-editor-edit-game-info menu-item "Edit Game Info" igo-editor-edit-game-info)
+           (igo-editor-make-current-node-root menu-item "Make Current Node Root" igo-editor-make-current-node-root)
            ))
 
 (defun igo-editor-main-menu (&optional editor)
@@ -1170,6 +1172,11 @@
                       menu-item "Delete This Move and After"
                       igo-editor-move-mode-delete-move
                       :enable ,(and (not (igo-node-root-p clicked-node))
+                                    (igo-editor-editable-p editor)))
+                     (igo-editor-move-mode-make-move-root
+                      menu-item "Make This Move the Root"
+                      igo-editor-move-mode-make-move-root
+                      :enable ,(and (not (igo-node-root-p clicked-node))
                                     (igo-editor-editable-p editor)))))
              (events (x-popup-menu last-input-event menu)))
         (if (functionp (car events))
@@ -1191,6 +1198,15 @@
     (igo-game-undo (igo-editor-game editor))
 
     (igo-node-delete-next (igo-editor-current-node editor) clicked-node)
+    (igo-editor-update-on-modified editor)))
+
+(defun igo-editor-move-mode-make-move-root (editor clicked-node)
+  (when (igo-editor-editable-p editor t)
+    (if (igo-node-root-p clicked-node)
+        (error "already root node."))
+
+    (igo-game-undo-to (igo-editor-game editor) clicked-node)
+    (igo-game-make-current-node-root (igo-editor-game editor))
     (igo-editor-update-on-modified editor)))
 
 (defun igo-editor-put-stone (editor pos)
@@ -1677,6 +1693,17 @@
 
         ;; Update editor
         (igo-editor-update editor))))
+
+(defun igo-editor-make-current-node-root (&optional editor)
+  (interactive)
+  (if (null editor) (setq editor (igo-editor-at-input)))
+  (if editor
+      (when (igo-editor-editable-p editor t)
+        (when-let ((game (igo-editor-game editor)))
+          (if (igo-node-root-p (igo-game-current-node game))
+              (error "Already root node."))
+          (igo-game-make-current-node-root game)
+          (igo-editor-update-on-modified editor)))))
 
 ;; Editor - Game Info
 
