@@ -336,9 +336,18 @@
 
 (defvar igo-editor-main-menu-map
   '(keymap "Main Menu"
-           (igo-editor-toggle-status-bar menu-item "Toggle Status Bar" igo-editor-toggle-status-bar :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-status-bar)))
-           (igo-editor-toggle-move-number menu-item "Toggle Move Number" igo-editor-toggle-move-number :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-move-number)))
-           (igo-editor-toggle-branch-text menu-item "Toggle Branch Text" igo-editor-toggle-branch-text :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-branches)))
+           (view-menu menu-item "View"
+                      (keymap
+                       (igo-editor-toggle-status-bar menu-item "Status Bar" igo-editor-toggle-status-bar :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-status-bar)))
+                       (igo-editor-toggle-move-number menu-item "Move Number" igo-editor-toggle-move-number :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-move-number)))
+                       (igo-editor-toggle-branch-text menu-item "Branch Text" igo-editor-toggle-branch-text :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :show-branches)))))
+           (navi-menu menu-item "Navigation"
+                      (keymap
+                       (igo-editor-previous-fork menu-item "Previous Fork" igo-editor-previous-fork)
+                       (igo-editor-previous-node menu-item "Previous Node" igo-editor-previous-node)
+                       (igo-editor-next-node menu-item "Next Node" igo-editor-next-node)
+                       (igo-editor-next-fork menu-item "Next Fork" igo-editor-next-fork)
+                       (igo-editor-select-next-node menu-item "Select Next Node" igo-editor-select-next-node)))
            (sep-1 menu-item "--")
            (igo-editor-quit menu-item "Quit" igo-editor-quit)
            (sep-2 menu-item "--")
