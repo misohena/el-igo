@@ -95,7 +95,7 @@
                   nil ;;2:board-view
                   nil ;;3:svg
                   1.0 ;;4:image-scale
-                  (list nil) ;;5:image-map
+                  (list nil) ;;5:image-input-map
                   nil ;;6:image
                   nil ;;7:buffer text last updated (see: update-buffer-text)
                   nil ;;8:last error
@@ -132,7 +132,7 @@
 (defun igo-editor-board-view (editor) (aref editor 2))
 (defun igo-editor-svg (editor) (aref editor 3))
 (defun igo-editor-image-scale (editor) (aref editor 4))
-(defun igo-editor-image-map (editor) (aref editor 5))
+(defun igo-editor-image-input-map (editor) (aref editor 5))
 (defun igo-editor-image (editor) (aref editor 6))
 (defun igo-editor-last-buffer-text (editor) (aref editor 7))
 (defun igo-editor-last-error (editor) (aref editor 8))
@@ -146,7 +146,7 @@
 (defun igo-editor--board-view-set (editor view) (aset editor 2 view))
 (defun igo-editor--svg-set (editor svg) (aset editor 3 svg))
 (defun igo-editor--image-scale-set (editor scale) (aset editor 4 scale))
-;;(defun igo-editor--image-map-set (editor image) (aset editor 5 image))
+;;(defun igo-editor--image-input-map-set (editor image) (aset editor 5 image))
 (defun igo-editor--image-set (editor image) (aset editor 6 image))
 (defun igo-editor--last-buffer-text-set (editor text) (aset editor 7 text))
 (defun igo-editor--last-error-set (editor err) (aset editor 8 err))
@@ -596,7 +596,7 @@
         (board (igo-editor-board editor))
         (board-view (igo-editor-board-view editor))
         (svg (igo-editor-svg editor))
-        (image-map (igo-editor-image-map editor))
+        (image-input-map (igo-editor-image-input-map editor))
         (image-scale (igo-editor-image-scale editor)))
     (when game
       ;; Create a new SVG Tree
@@ -621,12 +621,12 @@
                               :transform (format "scale(%s)" image-scale)))
         (igo-editor--svg-set editor svg)
         ;; Clear clickable areas
-        (igo-editor-clear-image-map editor)
+        (igo-editor-clear-image-input-map editor)
 
         ;; Initialize SVG Parts
         (if (igo-editor-get-property editor :show-status-bar)
             (igo-editor-create-status-bar editor svg board))
-        (igo-editor-create-svg-board editor svg board-view image-map image-scale)
+        (igo-editor-create-svg-board editor svg board-view image-input-map image-scale)
         (igo-editor-create-navi-bar editor))
 
       ;; Update game status
@@ -652,17 +652,17 @@
       (igo-board-view-update-marks board-view svg t game)
 
       ;; Update image descriptor & display property
-      (let ((image (svg-image svg :scale 1.0 :map (car image-map))))
+      (let ((image (svg-image svg :scale 1.0 :map (car image-input-map))))
         (overlay-put (igo-editor-overlay editor) 'display image)
         (igo-editor--image-set editor image)))))
 
-(defun igo-editor-clear-image-map (editor)
-  (setcar (igo-editor-image-map editor) nil))
+(defun igo-editor-clear-image-input-map (editor)
+  (setcar (igo-editor-image-input-map editor) nil))
 
-(defun igo-editor-create-svg-board (editor svg board-view image-map image-scale)
+(defun igo-editor-create-svg-board (editor svg board-view image-input-map image-scale)
   (igo-board-view-create-board board-view svg 0 (igo-editor-board-top editor))
   (igo-ui-push-clickable-rect
-   image-map
+   image-input-map
    'igo-grid
    (igo-board-view-clickable-left board-view)
    (igo-board-view-clickable-top board-view (igo-editor-board-top editor))
@@ -794,7 +794,7 @@
          (board (igo-game-board game))
          (board-view (igo-editor-board-view editor))
          (svg (igo-editor-svg editor))
-         (image-map (igo-editor-image-map editor))
+         (image-input-map (igo-editor-image-input-map editor))
          (curr-node (igo-game-current-node game))
          (setup-node-index 0))
     (igo-board-view-update-branches
@@ -805,7 +805,7 @@
      ;; Called when branch is pass
      (lambda (index num-nodes text text-color turn class-name)
        (igo-editor-put-branch-text-on-button
-        svg image-map board-view 'igo-editor-pass text text-color turn class-name))
+        svg image-input-map board-view 'igo-editor-pass text text-color turn class-name))
      ;; Called when branch is resign
      nil
      ;; Called when branch is setup node
@@ -816,10 +816,10 @@
        (setq setup-node-index (1+ setup-node-index))))
 
     ;; update clickable rect for setup nodes
-    (igo-editor-setup-nodes-area-update-image-map editor setup-node-index)))
+    (igo-editor-setup-nodes-area-update-image-input-map editor setup-node-index)))
 
-(defun igo-editor-put-branch-text-on-button (svg image-map board-view button-id text text-color turn class-name)
-  (let ((xy (igo-ui-left-top-of-clickable-area image-map button-id)))
+(defun igo-editor-put-branch-text-on-button (svg image-input-map board-view button-id text text-color turn class-name)
+  (let ((xy (igo-ui-left-top-of-clickable-area image-input-map button-id)))
     (if xy
         (let* ((grid-interval (igo-board-view-interval board-view))
                (font-size (igo-svg-font-size-on-board grid-interval))
@@ -835,12 +835,12 @@
 
 ;; Editor - Image - Branch Text - Setup Nodes Area
 
-(defun igo-editor-setup-nodes-area-update-image-map (editor num-setup-nodes)
+(defun igo-editor-setup-nodes-area-update-image-input-map (editor num-setup-nodes)
   (igo-ui-remove-clickable-area
-   image-map 'igo-setup-nodes-area)
+   image-input-map 'igo-setup-nodes-area)
   (if (> num-setup-nodes 0)
       (igo-ui-push-clickable-rect
-       image-map 'igo-setup-nodes-area
+       image-input-map 'igo-setup-nodes-area
        (igo-editor-setup-nodes-area-left editor)
        (igo-editor-setup-nodes-area-top editor)
        (igo-editor-setup-nodes-area-width editor num-setup-nodes)
@@ -1166,22 +1166,22 @@
 (defun igo-editor-create-navi-bar (editor)
   (let ((svg (igo-editor-svg editor))
         (board (igo-editor-board editor))
-        (image-map (igo-editor-image-map editor))
+        (image-input-map (igo-editor-image-input-map editor))
         (image-scale (igo-editor-image-scale editor)))
-    (when (and svg board image-map)
-      (igo-ui-remove-clickable-areas-under image-map
+    (when (and svg board image-input-map)
+      (igo-ui-remove-clickable-areas-under image-input-map
                                            (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-editor-main-bar-top editor))
              (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-board-pixel-w editor)
                                      "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
-        (igo-ui-create-button bar 'igo-editor-menu pos "Menu" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-first pos "|<" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-previous pos " <" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-forward pos "> " image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-last pos ">|" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-pass pos "Pass" image-map image-scale)
-        ;;(igo-ui-create-button bar 'igo-editor-resign pos "Resign" image-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-menu pos "Menu" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-first pos "|<" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-previous pos " <" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-forward pos "> " image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-last pos ">|" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-pass pos "Pass" image-input-map image-scale)
+        ;;(igo-ui-create-button bar 'igo-editor-resign pos "Resign" image-input-map image-scale)
         ))))
 
 (defun igo-editor-move-mode-board-click ()
@@ -1434,20 +1434,20 @@
 (defun igo-editor-create-free-edit-bar (editor)
   (let ((svg (igo-editor-svg editor))
         (board (igo-editor-board editor))
-        (image-map (igo-editor-image-map editor))
+        (image-input-map (igo-editor-image-input-map editor))
         (image-scale (igo-editor-image-scale editor)))
-    (when (and svg board image-map)
-      (igo-ui-remove-clickable-areas-under image-map
+    (when (and svg board image-input-map)
+      (igo-ui-remove-clickable-areas-under image-input-map
                                            (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-editor-main-bar-top editor))
              (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-board-pixel-w editor)
                                      "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
-        (igo-ui-create-button bar 'igo-editor-free-edit-quit pos "Quit" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-free-edit-black pos "Black" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-free-edit-white pos "White" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-free-edit-empty pos "Empty" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-free-edit-turn pos "Turn" image-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-free-edit-quit pos "Quit" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-free-edit-black pos "Black" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-free-edit-white pos "White" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-free-edit-empty pos "Empty" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-free-edit-turn pos "Turn" image-input-map image-scale)
         ))))
 
 (defun igo-editor-free-edit-select (istate)
@@ -1637,22 +1637,22 @@
 (defun igo-editor-create-mark-edit-bar (editor)
   (let ((svg (igo-editor-svg editor))
         (board (igo-editor-board editor))
-        (image-map (igo-editor-image-map editor))
+        (image-input-map (igo-editor-image-input-map editor))
         (image-scale (igo-editor-image-scale editor)))
-    (when (and svg board image-map)
-      (igo-ui-remove-clickable-areas-under image-map
+    (when (and svg board image-input-map)
+      (igo-ui-remove-clickable-areas-under image-input-map
                                            (car (dom-by-id svg "^main-bar$")))
       (let* ((bar-y (igo-editor-main-bar-top editor))
              (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-board-pixel-w editor)
                                      "main-bar"))
              (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
-        (igo-ui-create-button bar 'igo-editor-mark-edit-quit pos "Quit" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-mark-edit-cross pos "X" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-mark-edit-circle pos "O" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-mark-edit-square pos "SQ" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-mark-edit-triangle pos "TR" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-mark-edit-text pos "tExt" image-map image-scale)
-        (igo-ui-create-button bar 'igo-editor-mark-edit-del pos "Del" image-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-quit pos "Quit" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-cross pos "X" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-circle pos "O" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-square pos "SQ" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-triangle pos "TR" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-text pos "tExt" image-input-map image-scale)
+        (igo-ui-create-button bar 'igo-editor-mark-edit-del pos "Del" image-input-map image-scale)
         ))))
 
 (defun igo-editor-mark-edit-select (mark-type)
@@ -2039,7 +2039,7 @@
     (svg-rectangle bar bar-x bar-y bar-w bar-h :fill "#333")
     bar))
 
-(defun igo-ui-create-button (svg id pos text image-map image-scale)
+(defun igo-ui-create-button (svg id pos text image-input-map image-scale)
   (let* ((text-w (igo-ui-text-width text))
          (btn-x (car pos))
          (btn-y (cdr pos))
@@ -2061,10 +2061,10 @@
     ;; Advance POS
     (incf (car pos) (+ btn-w igo-ui-button-margin-h))
     ;; Add clickable area to map property of Image Descriptor
-    (igo-ui-push-clickable-rect image-map id btn-x btn-y btn-w btn-h image-scale)))
+    (igo-ui-push-clickable-rect image-input-map id btn-x btn-y btn-w btn-h image-scale)))
 
-(defun igo-ui-push-clickable-rect (image-map id x y w h image-scale)
-  (if image-map
+(defun igo-ui-push-clickable-rect (image-input-map id x y w h image-scale)
+  (if image-input-map
       (let ((left (floor (* (float x) image-scale)))
             (top (floor (* (float y) image-scale)))
             (right (ceiling (* (float (+ x w)) image-scale)))
@@ -2073,13 +2073,13 @@
                (cons 'rect (cons (cons left top) (cons right bottom)))
                id
                (list 'pointer 'hand))
-              (car image-map)))))
+              (car image-input-map)))))
 
-(defun igo-ui-find-clickable-area (image-map id)
-  (seq-find (lambda (area) (eq (cadr area) id)) (car image-map)))
+(defun igo-ui-find-clickable-area (image-input-map id)
+  (seq-find (lambda (area) (eq (cadr area) id)) (car image-input-map)))
 
-(defun igo-ui-left-top-of-clickable-area (image-map id)
-  (let* ((area (igo-ui-find-clickable-area image-map id))
+(defun igo-ui-left-top-of-clickable-area (image-input-map id)
+  (let* ((area (igo-ui-find-clickable-area image-input-map id))
          (shape (car area)))
     (if shape
         (cond
@@ -2088,9 +2088,9 @@
          ;;@todo poly
          ))))
 
-(defun igo-ui-remove-clickable-area (image-map id)
+(defun igo-ui-remove-clickable-area (image-input-map id)
   ;; @todo Use cl-remove-if?
-  (let ((areas (car image-map))
+  (let ((areas (car image-input-map))
         prev)
     (while (and areas (not (eq (cadr (car areas)) id)))
       (setq prev areas)
@@ -2098,16 +2098,16 @@
     (if areas
         (if prev
             (setcdr prev (cdr areas))
-          (setcar image-map (cdr areas)))))
-  image-map)
+          (setcar image-input-map (cdr areas)))))
+  image-input-map)
 
-(defun igo-ui-remove-clickable-areas-under (image-map dom-node)
-  "Remove all clickable areas from IMAGE-MAP that matches the id of children of DOM-NODE."
+(defun igo-ui-remove-clickable-areas-under (image-input-map dom-node)
+  "Remove all clickable areas from IMAGE-INPUT-MAP that matches the id of children of DOM-NODE."
   ;;@todo all children? all descendants?
   (dolist (child (dom-children dom-node))
     (let ((child-id (dom-attr child 'id)))
       (if child-id
-          (igo-ui-remove-clickable-area image-map (intern child-id))))))
+          (igo-ui-remove-clickable-area image-input-map (intern child-id))))))
 
 (provide 'igo-editor)
 ;;; igo-editor.el ends here
