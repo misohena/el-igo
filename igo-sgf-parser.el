@@ -35,19 +35,19 @@
 ;; - (igo-sgf-strm-pos strm)
 ;; - (igo-sgf-error strm message)
 
-(defun igo-sgf-scan (strm)
+(defun igo-sgf-scan (_strm)
   (char-after))
 
-(defun igo-sgf-get (strm)
+(defun igo-sgf-get (_strm)
   (when (< (point) (point-max))
     (forward-char)
     (char-before)))
 
-(defun igo-sgf-discard (strm)
+(defun igo-sgf-discard (_strm)
   (if (< (point) (point-max))
       (forward-char)))
 
-(defun igo-sgf-strm-pos (strm)
+(defun igo-sgf-strm-pos (_strm)
   (point))
 
 (defun igo-sgf-error (strm message)

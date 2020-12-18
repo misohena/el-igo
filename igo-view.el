@@ -195,7 +195,7 @@ height."
                                                       left
                                                       top)))
          ;; Board Rect
-         (svg-board-rect (svg-rectangle svg-board-root 0 0 pixel-w pixel-h :fill "#e3aa4e"))
+         (_svg-board-rect (svg-rectangle svg-board-root 0 0 pixel-w pixel-h :fill "#e3aa4e"))
          ;; Game Area
          (svg-game-area (svg-node svg-board-root 'g
                                   :class "game-area"
@@ -531,7 +531,6 @@ height."
   (dolist (mark marks)
     (let* ((type (igo-mark-type mark))
            (pos (igo-mark-pos mark))
-           (text (igo-mark-text mark))
            (x (igo-board-pos-to-x board pos))
            (y (igo-board-pos-to-y board pos))
            (parent (igo-svg-overlays-group svg)))

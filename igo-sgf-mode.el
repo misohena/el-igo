@@ -52,7 +52,7 @@ The following commands are available:
 (defvar igo-sgf-mode-font-lock-keywords
   '((igo-sgf-mode-fontify)))
 
-(defun igo-sgf-mode-fontify (limit)
+(defun igo-sgf-mode-fontify (_limit)
   (let ((editor igo-sgf-mode-editor))
     ;; Cover whole buffer
     (igo-editor-set-region editor (point-min) (point-max))
@@ -89,7 +89,7 @@ The following commands are available:
 
     editor))
 
-(defun igo-sgf-mode-on-keymap-change (editor keymap)
+(defun igo-sgf-mode-on-keymap-change (_editor keymap)
   (setq-local igo-sgf-mode-map keymap)
   (use-local-map keymap)
   ;; Return t. EDITOR does not change the overlay's keymap.

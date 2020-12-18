@@ -178,8 +178,8 @@
 
 ;; Unfontify
 
-(defun igo-org--unfontify-region-advice (old-func beg end &optional _maybe_loudly)
-  (funcall old-func beg end _maybe_loudly)
+(defun igo-org--unfontify-region-advice (old-func beg end &optional maybe_loudly)
+  (funcall old-func beg end maybe_loudly)
   (igo-org-unfontify-region beg end))
 
 (defun igo-org-unfontify-region (beg end)

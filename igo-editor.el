@@ -573,7 +573,7 @@
 
 ;; Editor - Image
 
-(defun igo-editor-status-bar-top (editor)
+(defun igo-editor-status-bar-top (_editor)
   0)
 (defun igo-editor-board-top (editor)
   (if (igo-editor-get-property editor :show-status-bar)
@@ -630,7 +630,7 @@
 
         ;; Initialize SVG Parts
         (if (igo-editor-get-property editor :show-status-bar)
-            (igo-editor-create-status-bar editor svg board))
+            (igo-editor-create-status-bar editor svg))
         (igo-editor-create-svg-board editor svg board-view image-input-map image-scale)
         (igo-editor-create-navi-bar editor))
 
@@ -721,7 +721,7 @@
 
 ;; Editor - Image - Status Bar
 
-(defun igo-editor-create-status-bar (editor svg board)
+(defun igo-editor-create-status-bar (editor svg)
   (let* ((bar-w (igo-editor-board-pixel-w editor))
          (bar (igo-ui-create-bar svg
                                  0
@@ -808,13 +808,13 @@
      (igo-editor-get-property editor :show-branches)
      board curr-node
      ;; Called when branch is pass
-     (lambda (index num-nodes text text-color turn class-name)
+     (lambda (_index _num-nodes text text-color turn class-name)
        (igo-editor-put-branch-text-on-button
         svg image-input-map board-view 'igo-editor-pass text text-color turn class-name))
      ;; Called when branch is resign
      nil
      ;; Called when branch is setup node
-     (lambda (index num-nodes text text-color turn class-name)
+     (lambda (_index _num-nodes text text-color turn class-name)
        (igo-editor-setup-nodes-area-put-branch-text
         editor
         svg setup-node-index text text-color turn class-name)
@@ -1160,12 +1160,12 @@
       nil))
     (igo-editor-update-image editor)))
 
-(defun igo-editor-move-mode-start (editor mode)
+(defun igo-editor-move-mode-start (editor _mode)
   (igo-editor-set-keymap editor igo-editor-move-mode-map)
   (igo-editor-create-navi-bar editor)
   (message "Move Mode"))
 
-(defun igo-editor-move-mode-stop (editor mode)
+(defun igo-editor-move-mode-stop (editor _mode)
   (igo-editor-set-keymap editor igo-editor-graphical-mode-map))
 
 (defun igo-editor-create-navi-bar (editor)
@@ -1265,7 +1265,7 @@
         (if (functionp (car events))
             (funcall (car events) editor curr-node clicked-node)))))
 
-(defun igo-editor-move-mode-select-branch (editor curr-node clicked-node)
+(defun igo-editor-move-mode-select-branch (editor _curr-node clicked-node)
   (if (igo-game-apply-node (igo-editor-game editor) clicked-node)
       (igo-editor-update-image editor)))
 
@@ -1428,12 +1428,12 @@
       ) )
     (igo-editor-update-image editor)))
 
-(defun igo-editor-free-edit-mode-start (editor mode)
+(defun igo-editor-free-edit-mode-start (editor _mode)
   (igo-editor-set-keymap editor igo-editor-free-edit-mode-map)
   (igo-editor-create-free-edit-bar editor)
   (message "Free Edit Mode"))
 
-(defun igo-editor-free-edit-mode-stop (editor mode)
+(defun igo-editor-free-edit-mode-stop (editor _mode)
   (igo-editor-set-keymap editor igo-editor-graphical-mode-map))
 
 (defun igo-editor-create-free-edit-bar (editor)
@@ -1631,12 +1631,12 @@
       ) )
     (igo-editor-update-image editor)))
 
-(defun igo-editor-mark-edit-mode-start (editor mode)
+(defun igo-editor-mark-edit-mode-start (editor _mode)
   (igo-editor-set-keymap editor igo-editor-mark-edit-mode-map)
   (igo-editor-create-mark-edit-bar editor)
   (message "Mark Edit Mode"))
 
-(defun igo-editor-mark-edit-mode-stop (editor mode)
+(defun igo-editor-mark-edit-mode-stop (editor _mode)
   (igo-editor-set-keymap editor igo-editor-graphical-mode-map))
 
 (defun igo-editor-create-mark-edit-bar (editor)
@@ -1919,11 +1919,11 @@
         ))
     widgets))
 
-(defun igo-editor-edit-game-info--cancel (&rest ignore)
+(defun igo-editor-edit-game-info--cancel (&rest _ignore)
   (interactive)
   (kill-buffer igo-editor-game-info-buffer-name))
 
-(defun igo-editor-edit-game-info--ok (&rest ignore)
+(defun igo-editor-edit-game-info--ok (&rest _ignore)
   (interactive)
 
   (let* ((editor igo-editor-edit-game-info--editor)
