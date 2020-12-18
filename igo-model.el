@@ -211,8 +211,6 @@
 
 (defun igo-board-set-turn (board color)
   (aset board igo-board--idx-turn color))
-(defun igo-board-rotate-turn (board)
-  (igo-board-set-turn board (igo-opposite-color (igo-board-turn board))))
 
 ;; Board - Prisoners
 
@@ -234,15 +232,21 @@
 
 ;; Board - Move
 
-(defun igo-board-pass (board)
-  (let ((ko-pos-old (igo-board-ko-pos board))
-        (turn-old (igo-board-turn board)))
-    (igo-board-set-ko-pos board igo-npos)
-    (igo-board-rotate-turn board)
-    ;; return undo data
-    (igo-board-changes nil nil nil ko-pos-old turn-old nil nil)))
+(defun igo-board-pass (board &optional color)
+  (if (null color) (setq color (igo-board-turn board)))
+  (if (not (igo-same-color-p color (igo-board-turn board)))
+      ;; illegal
+      nil
+    ;; legal
+    (let ((ko-pos-old (igo-board-ko-pos board))
+          (turn-old (igo-board-turn board)))
+      (igo-board-set-ko-pos board igo-npos)
+      (igo-board-set-turn board (igo-opposite-color color)) ;;not opposite turn, if allow illegal moves
+      ;; return undo data
+      (igo-board-changes nil nil nil ko-pos-old turn-old nil nil))))
 
-(defun igo-board-put-stone (board pos color)
+(defun igo-board-put-stone (board pos &optional color)
+  (if (null color) (setq color (igo-board-turn board)))
   (if (not (igo-board-legal-move-p board pos color))
       ;; move(pos, color) is illegal
       nil
@@ -264,9 +268,9 @@
 
       (igo-board-add-prisoners board (igo-opposite-color color) (length removed-stones))
       (igo-board-set-ko-pos board ko-pos-new)
-      (igo-board-rotate-turn board)
+      (igo-board-set-turn board (igo-opposite-color color)) ;;not opposite turn, if allow illegal moves
       ;; return undo data
-      (igo-board-changes-make-move-undo color pos removed-stones ko-pos-old))))
+      (igo-board-changes-make-move-undo color pos removed-stones ko-pos-old turn-old))))
 
 (defun igo-board-legal-move-p (board pos color)
   (and
@@ -585,14 +589,14 @@
    board
    (igo-board (igo-board-w board) (igo-board-h board))))
 
-(defun igo-board-changes-make-move-undo (color pos removed-stones ko-pos-old)
+(defun igo-board-changes-make-move-undo (color pos removed-stones ko-pos-old turn-old)
   "Return a igo-board-changes that revert move."
   (igo-board-changes
    (if (igo-white-p color) removed-stones nil)
    (if (igo-black-p color) removed-stones nil)
    pos
    ko-pos-old
-   color
+   turn-old ;; Not necessarily the same as COLOR if allow illegal moves
    (if (and (igo-white-p color) removed-stones) (- (length removed-stones)) nil)
    (if (and (igo-black-p color) removed-stones) (- (length removed-stones)) nil)))
 
@@ -1142,20 +1146,24 @@
 
 ;; Game - Move
 
-(defun igo-game-resign (game)
-  (when (not (igo-game-finished-p game))
-    (igo-game-set-finished game)
-    ;; push undo stack & game tree node
-    (igo-game-push-undo game nil)
-    (igo-game-push-node game igo-resign)
-    t))
+(defun igo-game-resign (game &optional color)
+  (if (null color) (setq color (igo-game-turn game)))
+  (when (and game
+             (not (igo-game-finished-p game)))
+    (if (not (igo-same-color-p color (igo-game-turn game)))
+        ;;illegal
+        nil
+      ;;legal
+      (igo-game-set-finished game)
+      ;; push undo stack & game tree node
+      (igo-game-push-undo game nil)
+      (igo-game-push-node game igo-resign)
+      t)))
 
-(defun igo-game-pass (game)
-  (when (not (igo-game-finished-p game))
-    (let* ((board (igo-game-board game))
-           (ko-pos-old (igo-board-ko-pos board))
-           (turn-old (igo-board-turn board))
-           (undo (igo-board-pass board)))
+(defun igo-game-pass (game &optional color)
+  (when (and game
+             (not (igo-game-finished-p game)))
+    (let ((undo (igo-board-pass (igo-game-board game) color)))
       (when undo
         (igo-game-push-undo game undo)
         (igo-game-push-node game igo-pass)
@@ -1164,21 +1172,21 @@
             (igo-game-set-finished game))
         t))))
 
-(defun igo-game-put-stone (game pos)
+(defun igo-game-put-stone (game pos &optional color)
   (when (and game
              (not (igo-game-finished-p game)))
     ;; not finished
-    (let ((undo (igo-board-put-stone (igo-game-board game) pos (igo-game-turn game))))
+    (let ((undo (igo-board-put-stone (igo-game-board game) pos color)))
       (when undo
         ;;legal move
         (igo-game-push-undo game undo)
         (igo-game-push-node game pos)
         t))))
 
-(defun igo-game-legal-move-p (game pos)
+(defun igo-game-legal-move-p (game pos color)
   (and game
        (not (igo-game-finished-p game))
-       (igo-board-legal-move-p (igo-game-board game) pos (igo-game-turn game))))
+       (igo-board-legal-move-p (igo-game-board game) pos color)))
 
 ;; Game - Setup Node
 
