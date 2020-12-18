@@ -45,8 +45,7 @@
      ;; create a new editor
      ((null editors)
       (let ((editor (igo-editor begin end)))
-        (overlay-put (igo-editor-overlay editor) 'evaporate t) ;; auto delete
-        (igo-editor-update editor)))
+        (overlay-put (igo-editor-overlay editor) 'evaporate t))) ;; auto delete
      ;; change begin and end
      ((= (length editors) 1)
       (igo-editor-set-region (car editors) begin end)
