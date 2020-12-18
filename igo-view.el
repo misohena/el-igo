@@ -172,7 +172,7 @@ height."
        (igo-game-board game)
        (igo-board-view-interval view)
        (igo-node-get-marks-property (igo-game-current-node game)))
-    (igo-svg-remove-marks)))
+    (igo-svg-remove-marks svg)))
 
 
 

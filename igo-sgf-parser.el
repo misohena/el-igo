@@ -276,7 +276,7 @@
   (dolist (node (igo-sgf-tree-nodes tree))
     (funcall func node tree))
   (dolist (subtree (igo-sgf-tree-subtrees tree))
-    (igo-sgf-tree-each-nodes subtree)))
+    (igo-sgf-tree-each-nodes subtree func)))
 
 (defun igo-sgf-tree-root-node (tree)
   (car (igo-sgf-tree-nodes tree)))
