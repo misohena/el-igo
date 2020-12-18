@@ -399,16 +399,19 @@ height."
       (let ((text (if (= num-next-nodes 1) "X" (string (+ ?A branch-index))))) ;;@todo x => svg-line?
         (cond
          ((igo-node-placement-p next)
-          (igo-svg-text-at-intersection
-           (igo-svg-overlays-group svg)
-           (igo-board-pos-to-x board (igo-node-move next))
-           (igo-board-pos-to-y board (igo-node-move next))
-           grid-interval text text-color (list :class class-name)))
+          (if (igo-same-color-p (igo-node-color next) turn)
+              (igo-svg-text-at-intersection
+               (igo-svg-overlays-group svg)
+               (igo-board-pos-to-x board (igo-node-move next))
+               (igo-board-pos-to-y board (igo-node-move next))
+               grid-interval text text-color (list :class class-name))))
          ((igo-node-pass-p next)
-          (if (functionp fun-pass)
+          (if (and (igo-same-color-p (igo-node-color next) turn)
+                   (functionp fun-pass))
               (funcall fun-pass branch-index num-next-nodes text text-color turn class-name)))
          ((igo-node-resign-p next)
-          (if (functionp fun-resign)
+          (if (and (igo-same-color-p (igo-node-color next) turn)
+                   (functionp fun-resign))
               (funcall fun-resign branch-index num-next-nodes text text-color turn class-name)))
          ((igo-node-setup-p next)
           (if (functionp fun-setup)

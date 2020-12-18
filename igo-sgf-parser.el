@@ -559,19 +559,20 @@ ex:
                 (if moved
                     (error "%sOnly one move in one node"
                            (igo-sgf-property-location-string sgf-prop)))
-                (if (not (string= (if (igo-black-p turn) "B" "W") prop-id))
-                    (error "%sTurn mismatch"
-                           (igo-sgf-property-location-string sgf-prop)))
-                (igo-sgf-property-ensure-one-value sgf-prop)
-                (let ((move (igo-sgf-value-as-move (car prop-values) w h)))
-                  (if (and prev-node (igo-node-find-next-by-move prev-node move))
+                (let ((color (if (string= prop-id "B") 'black 'white))
+                      (move (igo-sgf-value-as-move (car prop-values) w h)))
+                  ;; (if (not (igo-same-color-p turn color))
+                  ;;     (error "%sTurn mismatch"
+                  ;;            (igo-sgf-property-location-string sgf-prop)))
+                  (igo-sgf-property-ensure-one-value sgf-prop)
+                  (if (and prev-node (igo-node-find-next-by-move prev-node move color))
                       (error "%sMove %s already exists"
                              (igo-sgf-property-location-string sgf-prop)
                              (igo-sgf-prop-value-content (car prop-values))))
-                  (igo-node-set-move curr-node move))
-                (setq move-number (1+ move-number))
-                (setq turn (igo-opposite-color turn))
-                (setq moved t))
+                  (igo-node-set-move-and-color curr-node move color)
+                  (setq move-number (1+ move-number))
+                  (setq turn (igo-opposite-color color)) ;;not opposite turn, if allow illegal moves
+                  (setq moved t)))
                ;; Setup Properties
                ((string= prop-id "AE")
                 (setq setup-empty (nconc setup-empty (igo-sgf-values-as-point-pos-list prop-values w h))))
@@ -747,7 +748,7 @@ ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
           (lambda (r1 r2) (< (igo-xy-to-pos (caar r1) (cdar r1) w)
                              (igo-xy-to-pos (caar r2) (cdar r2) w))))))
 
-(defun igo-sgf-string-from-game-tree (node w h turn)
+(defun igo-sgf-string-from-game-tree (node w h)
   (let ((sgf-tree-p (or (igo-node-root-p node) ;; is root
                         (> (igo-node-number-of-siblings node) 1)))) ;;has siblings
 
@@ -760,10 +761,11 @@ ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
          (concat "FF[4]GM[1]SZ[" (if (= w h) (number-to-string w) (format "%s:%s" w h)) "]"))
 
      ;; Move Property
-     (let* ((move (igo-node-move node)))
+     (let ((move (igo-node-move node))
+           (color (igo-node-color node)))
        (cond
-        ((igo-placement-p move) (concat (igo-sgf-color turn) "[" (igo-sgf-point move w) "]" ))
-        ((igo-pass-p move) (concat (igo-sgf-color turn) "[]"))
+        ((igo-placement-p move) (concat (igo-sgf-color color) "[" (igo-sgf-point move w) "]" ))
+        ((igo-pass-p move) (concat (igo-sgf-color color) "[]"))
         ((igo-resign-p move) nil))) ;;Ignore
 
      ;; Properties
@@ -780,9 +782,6 @@ ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
                (change-white (igo-board-changes-white board-change))
                (change-empty (igo-board-changes-empty board-change))
                (change-turn (igo-board-changes-turn board-change)))
-
-           (if change-turn
-             (setq turn change-turn))
 
            (concat
             (if change-black (concat "AB" (igo-sgf-point-list-compressed change-black w)))
@@ -833,7 +832,7 @@ ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
 
      ;; Sub-Nodes
      (cl-loop for subnode in (igo-node-next-nodes node) concat
-              (igo-sgf-string-from-game-tree subnode w h (if (or (igo-node-placement-p node) (igo-node-pass-p node)) (igo-opposite-color turn) turn)))
+              (igo-sgf-string-from-game-tree subnode w h))
      (if sgf-tree-p ")"))))
 
 

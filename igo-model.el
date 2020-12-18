@@ -621,30 +621,35 @@
 ;; Node
 ;;
 
-(defun igo-node (prev &optional move)
+(defun igo-node (prev &optional move color)
   (vector
    prev ;;0:prev
    (or move igo-nmove) ;;1:move
-   nil ;;2:properties
-   nil ;;3:next nodes
-   nil ;;4:last-visited
+   color ;;2:color
+   nil ;;3:properties
+   nil ;;4:next nodes
+   nil ;;5:last-visited
    ))
 
 (defconst igo-node--idx-prev 0)
 (defconst igo-node--idx-move 1)
-(defconst igo-node--idx-properties 2)
-(defconst igo-node--idx-next-nodes 3)
-(defconst igo-node--idx-last-visited 4)
+(defconst igo-node--idx-color 2)
+(defconst igo-node--idx-properties 3)
+(defconst igo-node--idx-next-nodes 4)
+(defconst igo-node--idx-last-visited 5)
 
 (defun igo-node-prev (node) (aref node igo-node--idx-prev))
 (defun igo-node-move (node) (aref node igo-node--idx-move))
+(defun igo-node-color (node) (aref node igo-node--idx-color))
 (defun igo-node-properties (node) (aref node igo-node--idx-properties))
 (defun igo-node-next-nodes (node) (aref node igo-node--idx-next-nodes))
 (defun igo-node-last-visited (node) (aref node igo-node--idx-last-visited))
 
 ;; Node - Node Type(Setup or Move(Resign, Pass, Placement))
 
-(defun igo-node-set-move (node move) (aset node igo-node--idx-move move))
+(defun igo-node-set-move-and-color (node move color)
+  (aset node igo-node--idx-move move)
+  (aset node igo-node--idx-color color))
 (defun igo-node-setup-p (node) (igo-nmove-p (igo-node-move node)))
 (defun igo-node-move-p (node) (not (igo-nmove-p (igo-node-move node))))
 (defun igo-node-pass-p (node) (igo-pass-p (igo-node-move node)))
@@ -655,26 +660,10 @@
   (and
    (igo-node-pass-p node)
    (let ((prev-node (igo-node-previous-move node)))
-     (and prev-node (igo-node-pass-p prev-node)))))
-
-;; Node - Color
-
-(defun igo-node-color (node)
-  (if (igo-node-setup-p node)
-      nil
-    ;; Search PL[color] to backward
-    (let ((opposite t) setup-color)
-      (while (and node (null setup-color))
-        (if (igo-node-move-p node)
-            (setq opposite (not opposite)))
-        (if (igo-node-setup-p node)
-            (let ((turn-change (igo-board-changes-turn (igo-node-get-setup-property node))))
-              (if turn-change
-                  (setq setup-color turn-change))))
-        (setq node (igo-node-prev node)))
-      (if (null node)
-          (setq setup-color 'black))
-      (if opposite (igo-opposite-color setup-color) setup-color))))
+     (and prev-node
+          (not (igo-same-color-p (igo-node-color node)
+                                 (igo-node-color prev-node)))
+          (igo-node-pass-p prev-node)))))
 
 ;; Node - Make Root
 
@@ -697,7 +686,7 @@
       ;; Unlink previous node
       (aset node igo-node--idx-prev nil)
       ;; Clear move (indicate this node is a setup node)
-      (aset node igo-node--idx-move igo-nmove)
+      (igo-node-set-move-and-color node igo-nmove nil)
       ;; Set setup property to reproduce BOARD (discard old setup if it exists)
       (igo-node-set-setup-property
        node
@@ -797,9 +786,12 @@
          (if (= (length next-nodes) 1)
              (car next-nodes))))))
 
-(defun igo-node-find-next-by-move (node move)
-  "Return the node that matches MOVE from the next nodes."
-  (seq-find (lambda (next) (= (igo-node-move next) move))
+(defun igo-node-find-next-by-move (node move color)
+  "Return the node that matches MOVE and COLOR from the next nodes."
+  (seq-find (lambda (next) (and (= (igo-node-move next) move)
+                                (or (null color)
+                                    (igo-same-color-p (igo-node-color next)
+                                                      color))))
             (igo-node-next-nodes node)))
 
 (defun igo-node-get-next-setup-node (node index)
@@ -819,11 +811,11 @@
                (list next-node)))
   next-node)
 
-(defun igo-node-create-next-node (node &optional move)
+(defun igo-node-create-next-node (node &optional move color)
   (if (null move) (setq move igo-nmove))
 
   ;; Create a new node, add to NODE, return new node.
-  (igo-node-add-next-node node (igo-node node move)))
+  (igo-node-add-next-node node (igo-node node move color)))
 
 (defun igo-node-delete-next (node target-node)
   ;; remove TARGET-NODE from next-nodes
@@ -1150,7 +1142,7 @@
 
 ;; Game - Move
 
-(defun igo-game-resign (game &optional color)
+(defun igo-game-resign (game color)
   (if (null color) (setq color (igo-game-turn game)))
   (when (and game
              (not (igo-game-finished-p game)))
@@ -1161,22 +1153,22 @@
       (igo-game-set-finished game)
       ;; push undo stack & game tree node
       (igo-game-push-undo game nil)
-      (igo-game-push-node game igo-resign)
+      (igo-game-push-node game igo-resign color)
       t)))
 
-(defun igo-game-pass (game &optional color)
+(defun igo-game-pass (game color)
   (when (and game
              (not (igo-game-finished-p game)))
     (let ((undo (igo-board-pass (igo-game-board game) color)))
       (when undo
         (igo-game-push-undo game undo)
-        (igo-game-push-node game igo-pass)
+        (igo-game-push-node game igo-pass color)
         (if (igo-node-second-consecutive-pass-p
              (igo-game-current-node game))
             (igo-game-set-finished game))
         t))))
 
-(defun igo-game-put-stone (game pos &optional color)
+(defun igo-game-put-stone (game pos color)
   (when (and game
              (not (igo-game-finished-p game)))
     ;; not finished
@@ -1184,7 +1176,7 @@
       (when undo
         ;;legal move
         (igo-game-push-undo game undo)
-        (igo-game-push-node game pos)
+        (igo-game-push-node game pos color)
         t))))
 
 (defun igo-game-legal-move-p (game pos color)
@@ -1198,7 +1190,7 @@
   "Add a setup node to the current node. And change the current node to it."
   (when game
     (igo-game-push-undo game (igo-board-changes nil nil nil nil nil nil nil))
-    (igo-game-push-node game igo-nmove)
+    (igo-game-push-node game igo-nmove nil)
     t))
 
 ;; Game - Undo
@@ -1258,15 +1250,15 @@
 (defun igo-game-current-node (game)
   (aref game igo-game--idx-current-node))
 
-(defun igo-game-push-node (game move)
+(defun igo-game-push-node (game move color)
   (let* ((curr-node (igo-game-current-node game))
          (next-node (or
                      ;; If MOVE is nmove(setup node), always add a new node
-                     (if (igo-nmove-p move) (igo-node-create-next-node curr-node igo-nmove))
+                     (if (igo-nmove-p move) (igo-node-create-next-node curr-node igo-nmove nil))
                      ;; If already added MOVE, use it
-                     (igo-node-find-next-by-move curr-node move)
+                     (igo-node-find-next-by-move curr-node move color)
                      ;; add a new node
-                     (igo-node-create-next-node curr-node move))))
+                     (igo-node-create-next-node curr-node move color))))
     (igo-game-select-next-node game next-node)))
 
 (defun igo-game-select-next-node (game next-node)
@@ -1305,9 +1297,9 @@
 (defun igo-game-apply-node (game next-node)
   (cond
    ((null next-node) nil)
-   ((igo-node-pass-p next-node) (igo-game-pass game))
-   ((igo-node-resign-p next-node) (igo-game-resign game))
-   ((igo-node-placement-p next-node) (igo-game-put-stone game (igo-node-move next-node)))
+   ((igo-node-pass-p next-node) (igo-game-pass game (igo-node-color next-node)))
+   ((igo-node-resign-p next-node) (igo-game-resign game (igo-node-color next-node)))
+   ((igo-node-placement-p next-node) (igo-game-put-stone game (igo-node-move next-node) (igo-node-color next-node)))
    ((igo-node-setup-p next-node) ;; setup node
     ;; @todo check current-node contains next-node
     (let* ((change (igo-node-get-setup-property next-node))

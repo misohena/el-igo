@@ -470,8 +470,7 @@
   (igo-sgf-string-from-game-tree
    (igo-game-root-node game)
    (igo-board-w (igo-game-board game))
-   (igo-board-h (igo-game-board game))
-   'black))
+   (igo-board-h (igo-game-board game))))
 
 (defun igo-editor-replace-buffer-text (begin end text)
   (save-excursion
@@ -1224,7 +1223,10 @@
          (curr-node (igo-editor-current-node editor)))
     (if curr-node
         (igo-editor-move-mode-branch-click-r
-         editor curr-node (igo-node-find-next-by-move curr-node igo-pass)))))
+         editor curr-node
+         (igo-node-find-next-by-move
+          curr-node igo-pass
+          (igo-game-turn (igo-editor-game editor)))))))
 
 (defun igo-editor-setup-nodes-area-click ()
   (interactive)
@@ -1384,8 +1386,10 @@
       ;;    (if (igo-editor-set-intersection-setup-at editor pos 'black)
 
       (if (or (igo-editor-editable-p editor t)
-              (igo-node-find-next-by-move (igo-game-current-node game) pos))
-          (if (igo-game-put-stone game pos)
+              (igo-node-find-next-by-move (igo-game-current-node game)
+                                          pos
+                                          (igo-game-turn game)))
+          (if (igo-game-put-stone game pos (igo-game-turn game))
               (progn
                 (if (not (igo-editor-show-comment editor))
                     (message "Put at %s %s"
@@ -1403,8 +1407,10 @@
   (when editor
     (let* ((game (igo-editor-game editor)))
       (if (or (igo-editor-editable-p editor t)
-              (igo-node-find-next-by-move (igo-game-current-node game) igo-pass))
-          (if (igo-game-pass game)
+              (igo-node-find-next-by-move (igo-game-current-node game)
+                                          igo-pass
+                                          (igo-game-turn game)))
+          (if (igo-game-pass game (igo-game-turn game))
               (progn
                 (message "Pass")
                 (igo-editor-show-comment editor)
