@@ -1614,6 +1614,10 @@
               (igo-game-add-setup-node (igo-editor-game editor))
             (error "The current node is not a setup node.")))))
 
+(defun igo-editor-free-edit-board-click-r ()
+  (interactive)
+  )
+
 ;; Editor - Mark Edit Mode
 
 (defun igo-editor-mark-edit-mode (&optional editor)
