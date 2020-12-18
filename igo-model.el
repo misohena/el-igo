@@ -33,6 +33,10 @@
 
 ;;; Code:
 
+(defgroup el-igo nil
+  "Go Game Editor"
+  :prefix "igo-"
+  :group 'games)
 
 ;;
 ;; Position & Move
@@ -626,11 +630,11 @@
    nil ;;4:last-visited
    ))
 
-(setq igo-node--idx-prev 0)
-(setq igo-node--idx-move 1)
-(setq igo-node--idx-properties 2)
-(setq igo-node--idx-next-nodes 3)
-(setq igo-node--idx-last-visited 4)
+(defconst igo-node--idx-prev 0)
+(defconst igo-node--idx-move 1)
+(defconst igo-node--idx-properties 2)
+(defconst igo-node--idx-next-nodes 3)
+(defconst igo-node--idx-last-visited 4)
 
 (defun igo-node-prev (node) (aref node igo-node--idx-prev))
 (defun igo-node-move (node) (aref node igo-node--idx-move))
@@ -1118,11 +1122,11 @@
      root-node ;;current node
 )))
 
-(setq igo-game--idx-finished 0)
-(setq igo-game--idx-board 1)
-(setq igo-game--idx-undo 2)
-(setq igo-game--idx-root-node 3)
-(setq igo-game--idx-current-node 4)
+(defconst igo-game--idx-finished 0)
+(defconst igo-game--idx-board 1)
+(defconst igo-game--idx-undo 2)
+(defconst igo-game--idx-root-node 3)
+(defconst igo-game--idx-current-node 4)
 
 ;; Game - Finished
 

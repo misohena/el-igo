@@ -43,12 +43,23 @@ board width and height.
 
 If the value is an floating point number, it specifies the
 maximum board width and height as a ratio to frame width and
-height.")
+height."
+  :type '(choice integer
+                 float
+                 (cons (choice integer
+                               float)
+                       (choice integer
+                               float)))
+  :group 'el-igo)
 
 (defcustom igo-board-view-grid-interval-default 32
-  "Default interval of grid lines.")
+  "Default interval of grid lines."
+  :type '(integer)
+  :group 'el-igo)
 (defcustom igo-board-view-grid-interval-min 10
-  "Minimum interval of grid lines.")
+  "Minimum interval of grid lines."
+  :type '(integer)
+  :group 'el-igo)
 
 (defun igo-board-view-size-max-spec (width-p)
   "Extract width or height from igo-svg-max-board-size."

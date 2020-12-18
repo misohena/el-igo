@@ -30,10 +30,14 @@
 (require 'igo-view)
 
 (defcustom igo-editor-move-point-on-click t
-  "If non-nil, move point to editor clicked.")
+  "If non-nil, move point to editor clicked."
+  :type '(boolean)
+  :group 'el-igo)
 
 (defcustom igo-editor-status-bar-visible t
-  "If non-nil, status bar is displayed by default.")
+  "If non-nil, status bar is displayed by default."
+  :type '(boolean)
+  :group 'el-igo)
 
 ;; Editor Management
 
@@ -2017,19 +2021,28 @@
 ;; UI
 ;;
 
-(setq igo-ui-font-family "Times New Roman")
-(setq igo-ui-font-h 18)
-(setq igo-ui-font-ascent 16)
-(setq igo-ui-button-padding-v 4)
-(setq igo-ui-button-padding-h 8)
-(setq igo-ui-button-margin-v 4)
-(setq igo-ui-button-margin-h 4)
-(setq igo-ui-button-h (+ (* 2 igo-ui-button-padding-v) igo-ui-font-h))
-(setq igo-ui-bar-h (+ (* 2 igo-ui-button-margin-v)
-                      (* 2 igo-ui-button-padding-v)
-                      igo-ui-font-h))
-(setq igo-ui-bar-padding-v 4)
-(setq igo-ui-bar-padding-h 4)
+(defcustom igo-ui-font-family "Times New Roman"
+  "Font family of UI fonts."
+  :type '(string)
+  :group 'el-igo)
+(defcustom igo-ui-font-h 18
+  "UI font height."
+  :type '(integer)
+  :group 'el-igo)
+(defcustom igo-ui-font-ascent 16
+  "UI font ascent(Height between top and baseline)."
+  :type '(integer)
+  :group 'el-igo)
+(defvar igo-ui-button-padding-v 4)
+(defvar igo-ui-button-padding-h 8)
+(defvar igo-ui-button-margin-v 4)
+(defvar igo-ui-button-margin-h 4)
+(defvar igo-ui-button-h (+ (* 2 igo-ui-button-padding-v) igo-ui-font-h))
+(defvar igo-ui-bar-h (+ (* 2 igo-ui-button-margin-v)
+                        (* 2 igo-ui-button-padding-v)
+                        igo-ui-font-h))
+(defvar igo-ui-bar-padding-v 4)
+(defvar igo-ui-bar-padding-h 4)
 
 (defun igo-ui-text-width (text)
   (/ (* igo-ui-font-h (string-width text)) 2))
