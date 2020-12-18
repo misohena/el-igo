@@ -2034,14 +2034,8 @@
   "Font family of UI fonts."
   :type '(string)
   :group 'el-igo)
-(defcustom igo-ui-font-h 18
-  "UI font height."
-  :type '(integer)
-  :group 'el-igo)
-(defcustom igo-ui-font-ascent 16
-  "UI font ascent(Height between top and baseline)."
-  :type '(integer)
-  :group 'el-igo)
+(defvar igo-ui-font-h 18 "UI font height.")
+(defvar igo-ui-font-ascent 16 "UI font ascent(Height between top and baseline).")
 (defvar igo-ui-button-padding-v 4)
 (defvar igo-ui-button-padding-h 8)
 (defvar igo-ui-button-margin-v 4)
