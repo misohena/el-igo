@@ -841,16 +841,18 @@
 ;; Editor - Image - Branch Text - Setup Nodes Area
 
 (defun igo-editor-setup-nodes-area-update-image-input-map (editor num-setup-nodes)
-  (igo-ui-remove-clickable-area
-   image-input-map 'igo-setup-nodes-area)
-  (if (> num-setup-nodes 0)
-      (igo-ui-push-clickable-rect
-       image-input-map 'igo-setup-nodes-area
-       (igo-editor-setup-nodes-area-left editor)
-       (igo-editor-setup-nodes-area-top editor)
-       (igo-editor-setup-nodes-area-width editor num-setup-nodes)
-       (igo-editor-setup-nodes-area-height editor)
-       (igo-editor-image-scale editor))))
+  (let ((image-input-map (igo-editor-image-input-map editor)))
+    (igo-ui-remove-clickable-area
+     image-input-map
+     'igo-setup-nodes-area)
+    (if (> num-setup-nodes 0)
+        (igo-ui-push-clickable-rect
+         image-input-map 'igo-setup-nodes-area
+         (igo-editor-setup-nodes-area-left editor)
+         (igo-editor-setup-nodes-area-top editor)
+         (igo-editor-setup-nodes-area-width editor num-setup-nodes)
+         (igo-editor-setup-nodes-area-height editor)
+         (igo-editor-image-scale editor)))))
 
 (defun igo-editor-setup-nodes-area-text-x (editor index)
   (let ((board-view (igo-editor-board-view editor)))
