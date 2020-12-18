@@ -1855,6 +1855,9 @@
     (define-key km (kbd "C-c C-k") 'igo-editor-edit-game-info--cancel)
     km))
 
+(defvar-local igo-editor-edit-game-info--editor nil)
+(defvar-local igo-editor-edit-game-info--widgets nil)
+
 (defun igo-editor-edit-game-info (&optional editor)
   (interactive)
   (if (null editor) (setq editor (igo-editor-at-input)))
@@ -1867,13 +1870,13 @@
         (erase-buffer))
       (remove-overlays)
 
-      (setq-local igo-editor-edit-game-info--editor editor)
+      (setq igo-editor-edit-game-info--editor editor)
 
       (widget-insert "Game Information\n\n")
       (widget-insert " C-c C-c: OK\n")
       (widget-insert " C-c C-k: Cancel\n\n")
 
-      (setq-local
+      (setq
        igo-editor-edit-game-info--widgets
        (igo-editor-edit-game-info--insert-property-widgets root-node))
 

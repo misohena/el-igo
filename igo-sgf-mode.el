@@ -26,6 +26,8 @@
 
 (require 'igo-editor)
 
+(defvar-local igo-sgf-mode-editor nil)
+
 (defun igo-sgf-mode ()
   "Major mode for editing SGF files.
 
@@ -35,7 +37,7 @@ The following commands are available:
   (interactive)
 
   ;; Create new igo-editor
-  (setq-local igo-sgf-mode-editor (igo-editor (point-min) (point-max) nil nil t))
+  (setq igo-sgf-mode-editor (igo-editor (point-min) (point-max) nil nil t))
   (igo-sgf-mode-transfer-overlay-keymap-to-local-map igo-sgf-mode-editor)
   (igo-sgf-mode-track-buffer-read-only igo-sgf-mode-editor)
 
