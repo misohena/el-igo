@@ -1159,6 +1159,9 @@
       (when undo
         (igo-game-push-undo game undo)
         (igo-game-push-node game igo-pass)
+        (if (igo-node-second-consecutive-pass-p
+             (igo-game-current-node game))
+            (igo-game-set-finished game))
         t))))
 
 (defun igo-game-put-stone (game pos)
