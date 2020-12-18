@@ -400,41 +400,43 @@
 
 (defun igo-editor-update-model (editor)
   "Update game, last-buffer-text, last-error from buffer text."
-  (let* ((begin (igo-editor-begin editor))
-         (end (igo-editor-end editor))
-         (curr-text (buffer-substring-no-properties begin end)))
-    (if (equal curr-text (igo-editor-last-buffer-text editor))
-        ;; Return nil (not update)
-        nil
-      ;; Re-parse buffer text
-      ;;(message "Parse buffer text %s %s" begin end)
-      (condition-case err
-          (let ((game (igo-editor-make-game-from-sgf-buffer begin end)))
 
-            ;; Set current node
-            (let ((old-game (igo-editor-game editor)))
-              (if old-game
-                  ;; Reproduce the board of old-game
-                  (igo-game-redo-by-path
-                   game
-                   (igo-node-path-from-root (igo-game-current-node old-game)))
-                ;; show first branch or last node
-                (igo-game-redo-all game)))
+  (with-current-buffer (overlay-buffer (igo-editor-overlay editor))
+    (let* ((begin (igo-editor-begin editor))
+           (end (igo-editor-end editor))
+           (curr-text (buffer-substring-no-properties begin end)))
+      (if (equal curr-text (igo-editor-last-buffer-text editor))
+          ;; Return nil (not update)
+          nil
+        ;; Re-parse buffer text
+        ;;(message "Parse buffer text %s %s" begin end)
+        (condition-case err
+            (let ((game (igo-editor-make-game-from-sgf-buffer begin end)))
 
-            ;; Update game and text
-            (igo-editor--game-set editor game)
-            (igo-editor--last-buffer-text-set editor curr-text)
-            (igo-editor--last-error-set editor nil)
-            ;; Return t (update)
-            t)
-        ;; error
-        (error
-         (message "SGF error %s" (error-message-string err))
-         (igo-editor--game-set editor nil)
-         (igo-editor--last-buffer-text-set editor curr-text)
-         (igo-editor--last-error-set editor (igo-editor-split-error editor err))
-         ;; Return nil (not update)
-         nil)))))
+              ;; Set current node
+              (let ((old-game (igo-editor-game editor)))
+                (if old-game
+                    ;; Reproduce the board of old-game
+                    (igo-game-redo-by-path
+                     game
+                     (igo-node-path-from-root (igo-game-current-node old-game)))
+                  ;; show first branch or last node
+                  (igo-game-redo-all game)))
+
+              ;; Update game and text
+              (igo-editor--game-set editor game)
+              (igo-editor--last-buffer-text-set editor curr-text)
+              (igo-editor--last-error-set editor nil)
+              ;; Return t (update)
+              t)
+          ;; error
+          (error
+           (message "SGF error %s" (error-message-string err))
+           (igo-editor--game-set editor nil)
+           (igo-editor--last-buffer-text-set editor curr-text)
+           (igo-editor--last-error-set editor (igo-editor-split-error editor err))
+           ;; Return nil (not update)
+           nil))))))
 
 ;; Editor - Update Buffer Text
 
