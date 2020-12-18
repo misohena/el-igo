@@ -334,15 +334,6 @@ height."
 
 ;; Move Number
 
-(defun igo-svg-move-number-color (move-color istate last-move)
-  (cond
-   ((last-move "#f00")
-    ((igo-black-p istate) "#fff")
-    ((igo-white-p istate) "#000")
-    ;; empty intersection
-    ((igo-black-p move-color "#000"))
-    ((igo-white-p move-color "#fff")))))
-
 (defun igo-svg-move-number (svg x y grid-interval num text-color)
   (igo-svg-text-at-intersection
    (igo-svg-move-numbers-group svg)
