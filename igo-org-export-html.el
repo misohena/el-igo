@@ -60,6 +60,7 @@ window.addEventListener(\"load\", ev=>{
 
 (defcustom igo-org-lazy-js-template
   "<script>
+//<!--
 !function(e,t){var n=function(e,t){for(var n=0;n<e.length;++n)t(e[n])},r=Promise;e.loadScriptOnViewport=function(i,o){return\"string\"==typeof i&&(i=t.getElementById(i)),new r(l=>{(function(n){return new r(r=>{function i(o){var l=n.getBoundingClientRect();l.bottom+50>=0&&l.top-50<=(e.innerHeight||t.documentElement.clientHeight)&&(e.removeEventListener(\"load\",i,!1),e.removeEventListener(\"scroll\",i,!1),r(n))}e.addEventListener(\"load\",i,!1),e.addEventListener(\"scroll\",i,!1)})})(i).then(e=>{(function e(i,o){return\"string\"==typeof i?new r(e=>{var r={};n(t.getElementsByTagName(\"link\"),e=>{\"stylesheet\"==e.getAttribute(\"rel\")&&(r[e.getAttribute(\"href\")]=e)}),n(t.getElementsByTagName(\"script\"),e=>{r[e.getAttribute(\"src\")]=e});var o=t.head,l=r[i];if(l)if(l.isUrlLoading){var s=l.onload;l.onload=s?()=>{s(),e()}:e}else e();else/\\.css/.test(i)?((l=t.createElement(\"link\")).isUrlLoading=!0,l.rel=\"stylesheet\",l.type=\"text/css\",l.href=i):((l=t.createElement(\"script\")).isUrlLoading=!0,l.type=\"text/javascript\",l.src=i),l.onload=function(t){l.isUrlLoading&&(console.log(\"loaded: \"+i),l.isUrlLoading=!1,e())},o.appendChild(l)}):o?new r(t=>{var n=()=>{0==i.length?t():e(i.shift(),!1).then(n)};n()}):r.all(i.map(t=>e(t,!0)))})(o).then(()=>{l(e)})})})}}(window,document);
 
 var currScript = document.currentScript;
@@ -72,7 +73,7 @@ loadScriptOnViewport(div, [\"%PATH%igo.css\", [\"%PATH%igo.js\", \"%PATH%igo_vie
             elem,
             igo.Game.fromSGF(\"%LITERAL_SGF%\"), %OPT_JSON%);
 });
-</script>"
+//--></script>"
   "The js_igo template for lazy loading."
   :group 'el-igo
   :type 'string)
@@ -116,8 +117,10 @@ loadScriptOnViewport(div, [\"%PATH%igo.css\", [\"%PATH%igo.js\", \"%PATH%igo_vie
   "A filter function to set to org-export-filter-parse-tree-functions variable.
 
 Modify all igo special blocks in the DATA tree."
-  (when (or (eq backend 'html) (eq backend 'igo-html))
-    (when (and (not (memq 'body-only (plist-get info :export-options)))
+  (when (or (eq backend 'html)
+            (org-export-derived-backend-p
+             (org-export-get-backend backend) 'html))
+    (when (and ;;(not (memq 'body-only (plist-get info :export-options)))
                (not (member (plist-get info :igo-enable) '(nil "" "nil" "no"))))
 
       (let ((display-types-used (igo-org-modify-all-special-blocks data info)))
