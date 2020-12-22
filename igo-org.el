@@ -102,16 +102,25 @@
          ((eq key :read-only)
           (igo-editor-set-editable editor (not (igo-org-opt-bool value))))
          ((eq key :path)
-          (igo-editor-find-by-queries
-           editor
-           (if (numberp value)
-               (list value)
-             (split-string value "[/ \f\t\n\r\v]+" t "[ \f\t\n\r\v]+"))))
+          (igo-editor-find-by-queries editor (igo-org-opt-split-path value)))
          )))
     editor))
 
+(defun igo-org-opt-split-path (value)
+  (cond
+   ((null value) nil)
+   ((numberp value) (list value))
+   ((stringp value) (split-string value "[/ \f\t\n\r\v]+" t "[ \f\t\n\r\v]+"))))
+
 (defun igo-org-opt-bool (value)
   (null (member value '("no" "nil" nil))))
+
+(defun igo-org-opt-value (key options &optional default-value)
+  (cdr (or (assq key options) (cons key default-value))))
+
+(defun igo-org-opt-bool-value (key options &optional default-value)
+  (igo-org-opt-bool
+   (igo-org-opt-value key options default-value)))
 
 ;; Fontify src block (#+begin_src sgf ~ #+end_src)
 

@@ -18,6 +18,8 @@ init.elに次のコードを追加してください。
   (igo-org-setup))
 #+end_src
 
+また、HTMLとしてエクスポートしたときに盤面を表示したい場合は[[#org-export][後述]]の設定も追加してください。
+
 ** 使い方
 org文書内にigo特殊ブロックを挿入します。(操作例: C-c C-, SPC i g o RET)
 
@@ -28,7 +30,7 @@ org文書内にigo特殊ブロックを挿入します。(操作例: C-c C-, SPC
 
 ブロックの中に (;SZ[9]) と入力すると9路盤が表示されます。またはブロック内で C-c i を押すと盤面サイズを指定して初期化できるようになっています。
 
-後は適当に石を置いたり、フリー編集モードで初期盤面を設定したり(現在はルートノードのみ編集可能)、コメントを設定したりすると、その操作毎にバッファのテキストが書き換わります。
+後は適当に石を置いたり、フリー編集モードで初期盤面を設定したり、コメントを設定したりすると、その操作毎にバッファのテキストが書き換わります。
 
 ** ブロック毎のオプション
 
@@ -52,6 +54,7 @@ org文書内にigo特殊ブロックを挿入します。(操作例: C-c C-, SPC
 | :editable    | 編集可能                    | nil, noのとき編集不可能    |
 | :read-only   | 編集禁止(:editableの逆)     | nil, noのとき編集可能      |
 | :path        | 最初に表示する盤面(ノード)  | 盤面へたどり着く経路(後述) |
+| :display     | エクスポート時の表示方法    | 表示方法を示す値([[#org-export-options][後述]]) |
 
 *** :pathの指定方法
 
@@ -74,29 +77,6 @@ org文書内にigo特殊ブロックを挿入します。(操作例: C-c C-, SPC
 - A/B/A : 分岐をA、B、Aの順に選択した盤面
 - _ : 最初の分岐(無ければ最後の盤面)
 - _/-1 : 最初の分岐(無ければ最後の盤面)の一つ前
-
-** HTMLでのエクスポート
-
-特殊ブロックなのでHTMLエスクポート時には<div class="igo"><p>～</p></div>で囲まれたSGFテキストが出力されます。
-
-盤面の形で表示させたい場合は、ページ読み込み完了時にJavaScriptで一括変換するのが簡単でしょう。
-
-例えば拙作のJavaScript碁盤を使用するならば [[https://github.com/misohena/js_igo][misohena/js_igo: JavaScript Go Game Board]] より igo.js, igo_view.js, igo.css をダウンロードした上で、次のようにします。
-
-#+begin_src org
-,#+HTML_HEAD: <script src="igo.js"></script>
-,#+HTML_HEAD: <script src="igo_view.js"></script>
-,#+HTML_HEAD: <link rel="stylesheet" href="igo.css" />
-,#+HTML_HEAD: <script>window.addEventListener("load", ev=>{ for(elem of document.querySelectorAll("div.igo")){ let sgf = elem.textContent; while(elem.hasChildNodes()){elem.removeChild(elem.firstChild);} new igo.GameView(elem, sgf, {"showBranchText": true, "showLastMoveMark": true, "showComment": true, "path":1000}); }});</script>
-
-お互いに二連星したところ。
-
-,#+begin_igo
-(;FF[4]GM[1]SZ[9];B[fd];W[df];B[ff];W[dd])
-,#+end_igo
-#+end_src
-
-特殊ブロックの出力自体を変える方法もあります。ox-html.elのorg-html-special-block関数にadviceを仕込むか、htmlエクスポータから派生した独自のエクスポータを作るかになると思います。
 
 * SGFファイルの編集(igo-sgf-mode.el)
 ** 設定
@@ -220,3 +200,173 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 「次へ進む」ボタンは最後に選んだ分岐へ進みますが、もしまだ選択していない場合は明示的に指定する必要があります。
 
 分岐を削除したい場合や分岐の(アルファベットの)順番を変更したい場合は、アルファベットを *「右クリック」* してください。分岐に対する操作がポップアップメニューで表示されます。
+
+* org-modeでHTMLエクスポートする
+  :PROPERTIES:
+  :CUSTOM_ID: org-export
+  :END:
+
+org-mode文書中に棋譜を埋め込んだのならエクスポート後の文書にも盤面が表示されて欲しいと思うことでしょう。ここではHTMLでのエクスポート時に盤面を出力する方法について説明します。
+
+** org-mode標準機能だけで処理する方法
+標準のHTMLバックエンドは特殊ブロックをdivタグで囲んだ形で出力します。 ~#+begin_igo~ ～ ~#+end_igo~ も特殊ブロックなので、HTMLで出力すると ~<div class="igo"><p>~ /SGFテキスト/ ~</p></div>~ の形で出力されます。
+
+盤面の形で表示させたい場合は、ページ読み込み完了時にJavaScriptで一括変換すると良いでしょう。
+
+例えば拙作のJavaScript碁盤を使用するならば [[https://github.com/misohena/js_igo][misohena/js_igo: JavaScript Go Game Board]] より igo.js, igo_view.js, igo.css をダウンロードした上で、次のようにします。
+
+#+begin_src org
+,#+HTML_HEAD: <script src="igo.js"></script>
+,#+HTML_HEAD: <script src="igo_view.js"></script>
+,#+HTML_HEAD: <link rel="stylesheet" href="igo.css" />
+,#+HTML_HEAD: <script>window.addEventListener("load", ev=>{ for(elem of document.querySelectorAll("div.igo")){ let sgf = elem.textContent; while(elem.hasChildNodes()){elem.removeChild(elem.firstChild);} new igo.GameView(elem, sgf, {"showBranchText": true, "showLastMoveMark": true, "showComment": true, "path":1000}); }});</script>
+
+お互いに二連星したところ。
+
+,#+begin_igo
+(;FF[4]GM[1]SZ[9];B[fd];W[df];B[ff];W[dd])
+,#+end_igo
+#+end_src
+
+** エクスポータをカスタマイズする
+
+igo特殊ブロックの出力(変換結果)自体を変える方法もあります。
+
+igo特殊ブロックの出力を変えるためにはorg-modeのエクスポータをカスタマイズしなければなりませんが、その方法として次の三つを用意しました。
+
+- 既存のHTMLバックエンドを修正する
+- HTMLバックエンドから派生した新しいバックエンドを定義する
+- バッファローカル変数を書き替える
+
+** 既存のHTMLバックエンドを修正する
+
+最も使い勝手の良い方法は既存のHTMLバックエンドを修正することです。一度設定してしまえばファイル毎に設定する必要はありませんし、普段通りの操作でエクスポートできます。
+
+次のコードを init.el に追加してください。
+
+#+begin_src emacs-lisp
+(with-eval-after-load "ox-html"
+  (require 'igo-org-export-html)
+  (igo-org-modify-html-backend))
+#+end_src
+
+すると org-mode のHTMLバックエンドが読み込まれた直後にそれを書き替えてigo特殊ブロック( ~#+begin_igo~ ～ ~#+end_igo~ 部分)を特別に処理するようにします。
+
+デフォルトは拙作のJavaScript碁盤を使うHTMLを出力するので、 [[https://github.com/misohena/js_igo][misohena/js_igo: JavaScript Go Game Board]] より igo.js, igo_view.js, igo.css をダウンロードしてhtmlと同じ場所に配置してください。
+
+あとは通常通りHTMLとしてエクスポートするだけです。
+
+** HTMLバックエンドから派生した新しいバックエンドを定義する
+
+何らかの理由でHTMLバックエンドを直接修正して欲しくない場合、新しく専用のバックエンドを定義することも出来ます。
+
+次のコードを実行すると igo-html という名前のバックエンドが登録されます。
+
+#+begin_src emacs-lisp
+(require 'igo-org-export-html)
+(igo-org-define-html-backend t)
+#+end_src
+
+~igo-org-define-html-backend~ の引数に ~t~ を指定するとメニューに項目を追加します。
+
+=C-c C-e= でエクスポートのメニューを出した後、 g を押すことでこのバックエンドを指定できます。
+
+** 個別のファイルにフィルタを設定する
+
+バックエンドをカスタマイズしなくても、ファイルごとにバッファローカル変数を設定することで変換処理を変更できます。
+
+この方法を使うには、org-mode文書の中に次のコードを追加してください。
+
+#+begin_src org
+,#+begin_src emacs-lisp :exports results :results none
+(require 'igo-org-export-html)
+(igo-org-set-html-filters-local)
+,#+end_src
+#+end_src
+
+~:exports results~ を指定することでエクスポートのたびにソースブロックを評価させ、 ~:results none~ を指定することで結果の出力を抑制しています。
+
+後は通常通りHTMLとしてエクスポートしてください。
+
+org-modeのデフォルト設定ではエクスポートするたびにソースブロックを評価するか聞いてくるので yes を入力してください。
+
+するとバッファローカル変数に変換フィルタが設定され、igo特殊ブロックが特別に変換されます。
+
+** オプション
+   :PROPERTIES:
+   :CUSTOM_ID: org-export-options
+   :END:
+
+igo-org-export-html.el を使用して変換する場合、次のオプションが使用できます。
+
+| オプション                                   | 意味                                                                | デフォルト値                 |
+|----------------------------------------------+---------------------------------------------------------------------+------------------------------|
+| ~#+IGO_JS_PATH:~ /<path-to-directory>/       | スクリプトのあるディレクトリへのパス                                | igo-org-js-pathの値 (./)     |
+| ~#+IGO_JS_TEMPLATE:~ /<header-template>/     | HTMLのHEADに挿入するテキストの雛形(displayがjsのとき)               | igo-org-js-templateの値      |
+| ~#+IGO_LAZY_JS_TEMPLATE:~ /<block-template>/ | igo特殊ブロックの中に挿入するテキストの雛形(displayがlazy-jsのとき) | igo-org-lazy-js-templateの値 |
+| ~#+IGO_HEADER_TEMPLATE:~ /<header-template>/ | HTMLのHEADに挿入するテキストの雛形(displayがcustomのとき)           | igo-org-header-templateの値  |
+| ~#+IGO_BLOCK_TEMPLATE:~ /<block-template>/   | igo特殊ブロックの中に挿入するテキストの雛形(displayがcustomのとき)  | igo-org-block-templateの値   |
+| ~#+IGO_ENABLE:~ /<boolean>/                  | igo特殊ブロックを変換するかどうか                                   | t                            |
+| ~#+IGO_DISPLAY:~ /<display-type>/            | igo特殊ブロックをどのように変換するか                               | js                           |
+
+~#+IGO_ENABLE: nil~ を指定するとファイル内で一切の変換を抑制できます。
+
+~#+IGO_DISPLAY:~ には次のいずれかを指定できます。
+
+| /<display-type>/ | 表示方法                                                                          |
+|------------------+-----------------------------------------------------------------------------------|
+| ~none~           | 非表示                                                                            |
+| ~noconv~         | 変換しない(SGFテキストのまま)                                                     |
+| ~js~             | js_igoによるJavaScript碁盤                                                        |
+| ~lazy-js~        | js_igoによるJavaScript碁盤(遅延読み込み型。<head></head>にスクリプトを挿入しない) |
+| ~svg~            | SVG画像埋め込み                                                                   |
+| ~custom~         | ~#+IGO_HEADER_TEMPLATE:~ と ~#+IGO_BLOCK_TEMPLATE:~ を使用                        |
+
+また、表示方法はブロック毎に ~#+begin_igo :display <display-type>~ の形でも指定できます。
+
+例:
+
+#+begin_src org
+,#+IGO_JS_PATH: ./js_igo/
+,#+IGO_DISPLAY: svg
+
+,#+begin_igo :move-number t :path A/A/B
+....省略(SVGで表示)....
+,#+end_igo
+
+,#+begin_igo :read-only t :move-number t :path 5 :display js
+....省略(js_igoで表示)....
+,#+end_igo
+#+end_src
+
+表示方法によってはテンプレート文字列を指定できます。
+
+オプションの /<header-template>/ の部分は、HTMLのHEAD要素内に挿入するテキストの雛形です。表示方法が js であるブロックが存在する場合、 ~#+IGO_JS_TEMPLATE:~ オプションで指定した雛形が使われます。また、表示方法が custom であるブロックが存在する場合、 ~#+IGO_HEADER_TEMPLATE:~ オプションで指定した雛形も使われます。
+
+/<header-template>/ の中では次の記法が使用できます。
+
+| % /<var-name>/ % | 置き換え先                      |
+|------------------+---------------------------------|
+| ~%PATH%~         | ~#+IGO_JS_PATH:~ オプションの値 |
+
+オプションの /<block-template>/ の部分は、igo特殊ブロックの中に挿入するテキストの雛形です。表示方法が lazy-js のブロックには ~#+IGO_LAZY_JS_TEMPLATE:~ オプションで指定した雛形が使われます。また、表示方法が custom であるブロックには ~#+IGO_BLOCK_TEMPLATE:~ オプションで指定した雛形が使われます。
+
+/<header-template>/ の中では次の記法が使用できます。
+
+| % /<var-name>/ % | 置き換え先                      |
+|------------------+---------------------------------|
+| ~%PATH%~         | ~#+IGO_JS_PATH:~ オプションの値 |
+| ~%SGF%~          | SGFテキスト                     |
+| ~%OPT_JSON%~     | js_igo用のオプション            |
+| ~%SVG%~          | 盤面をSVG化したテキスト         |
+
+また、%の後に次のいずれかを指定することでテキスト内の一部の文字をエスケープできます。
+
+| 記法                   | 置き換える文字                 | 置き換え後の文字                  |
+|------------------------+--------------------------------+-----------------------------------|
+| ~%HTML_<var-name>%~    | & < >                          | &amp; &lt; &gt;                   |
+| ~%ATTR_<var-name>%~    | & < > "                        | &amp; &lt; &gt; &quot;            |
+| ~%LITERAL_<var-name>%~ | \ " 改行 <!-- <script </script | \\ \" \n <\!-- <\script <\/script |
+
+つまり、HTMLの属性の中に記述するときは%ATTR_を、HTMLの内容部分に記述するときは%HTML_を、JavaScriptの文字列リテラル内に記述するときは%LITERAL_を使用してください。例えばSGFをJavaScriptの文字列にして解析したい場合、 ~parseSGF("%LITERAL_SGF%")~ のように記述します。
+
