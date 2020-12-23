@@ -236,11 +236,12 @@
 
 ;; Board - Move
 
-(defun igo-board-pass (board &optional color)
+(defun igo-board-pass (board &optional color allow-illegal-move)
   (if (null color) (setq color (igo-board-turn board)))
-  (if (not (igo-same-color-p color (igo-board-turn board)))
-      ;; illegal
-      nil
+
+  ;; Check COLOR's pass is legal. If the pass is illegal, return nil
+  (when (or allow-illegal-move
+            (igo-same-color-p color (igo-board-turn board)))
     ;; legal
     (let ((ko-pos-old (igo-board-ko-pos board))
           (turn-old (igo-board-turn board)))
@@ -249,32 +250,46 @@
       ;; return undo data
       (igo-board-changes nil nil nil ko-pos-old turn-old nil nil))))
 
-(defun igo-board-put-stone (board pos &optional color)
+(defun igo-board-put-stone (board pos &optional color allow-illegal-move)
   (if (null color) (setq color (igo-board-turn board)))
-  (if (not (igo-board-legal-move-p board pos color))
-      ;; move(pos, color) is illegal
-      nil
-    ;; move(pos, color) is legal
 
-    ;; put stone
-    (igo-board-set-at board pos color)
+  ;; Check the move(pos, color) is legal. If the move is illegal, return nil
+  (when (or allow-illegal-move
+            (igo-board-legal-move-p board pos color))
 
-    ;; remove stones, change ko-pos, rotate turn
-    (let* ((removed-stones
+    ;; Illegal move behavior is based on the SGF specification:
+    ;;   SGF FF[5] - Move vs. Adding Stones
+    ;;   https://www.red-bean.com/sgf/ff5/m_vs_ax.htm
+
+    (let* (;; Put COLOR's stone at POS
+           (istate-old (igo-board-get-at board pos))
+           (_istate-new (igo-board-set-at board pos color))
+
+           ;; Remove captured stones
+           (removed-stones
             (append
              (igo-board-remove-string-if-surrounded board (igo-board-left-of board pos) color)
              (igo-board-remove-string-if-surrounded board (igo-board-right-of board pos) color)
              (igo-board-remove-string-if-surrounded board (igo-board-above board pos) color)
              (igo-board-remove-string-if-surrounded board (igo-board-below board pos) color)))
+           ;; Remove suicide stones
+           (suicide-stones
+            (if allow-illegal-move
+                (igo-board-remove-string-if-surrounded board pos (igo-opposite-color color))))
+           ;; Change ko-pos
            (ko-pos-old (igo-board-ko-pos board))
            (ko-pos-new (igo-board-get-new-ko-pos board pos color removed-stones))
-           (turn-old (igo-board-turn board)))
+           ;; Rotate turn
+           (turn-old (igo-board-turn board))
+           (turn-new (igo-opposite-color color)) ;;not opposite turn, if allow illegal moves
+           )
 
+      (igo-board-add-prisoners board color (length suicide-stones))
       (igo-board-add-prisoners board (igo-opposite-color color) (length removed-stones))
       (igo-board-set-ko-pos board ko-pos-new)
-      (igo-board-set-turn board (igo-opposite-color color)) ;;not opposite turn, if allow illegal moves
+      (igo-board-set-turn board turn-new)
       ;; return undo data
-      (igo-board-changes-make-move-undo color pos removed-stones ko-pos-old turn-old))))
+      (igo-board-changes-make-move-undo color pos istate-old removed-stones suicide-stones ko-pos-old turn-old))))
 
 (defun igo-board-legal-move-p (board pos color)
   (and
@@ -593,16 +608,45 @@
    board
    (igo-board (igo-board-w board) (igo-board-h board))))
 
-(defun igo-board-changes-make-move-undo (color pos removed-stones ko-pos-old turn-old)
+(defun igo-board-changes-make-move-undo
+    (color pos istate-old removed-stones suicide-stones ko-pos-old turn-old)
   "Return a igo-board-changes that revert move."
-  (igo-board-changes
-   (if (igo-white-p color) removed-stones nil)
-   (if (igo-black-p color) removed-stones nil)
-   pos
-   ko-pos-old
-   turn-old ;; Not necessarily the same as COLOR if allow illegal moves
-   (if (and (igo-white-p color) removed-stones) (- (length removed-stones)) nil)
-   (if (and (igo-black-p color) removed-stones) (- (length removed-stones)) nil)))
+
+  (let* (;; Calculate number of prisoners increased
+         (num-removed-stones (length removed-stones))
+         (num-suicide-stones (length suicide-stones))
+         (num-black-prisoners
+          (if (igo-black-p color) num-suicide-stones num-removed-stones))
+         (num-white-prisoners
+          (if (igo-white-p color) num-suicide-stones num-removed-stones))
+         ;; Guess current istate at POS
+         (istate-new (if (member pos suicide-stones) 'empty color))
+         ;; Remove POS from SUICIDE-STONES
+         (suicide-stones-without-pos (remove pos suicide-stones))
+         ;; Make pos-list
+         (black-pos-list
+          (if (igo-black-p color) suicide-stones-without-pos removed-stones))
+         (white-pos-list
+          (if (igo-white-p color) suicide-stones-without-pos removed-stones))
+         (empty-pos-list nil))
+
+    ;; Restore istate of POS
+    (if (not (igo-same-intersection-state-p istate-new istate-old))
+        (cond
+         ((igo-black-p istate-old) (push pos black-pos-list))
+         ((igo-white-p istate-old) (push pos white-pos-list))
+         ((igo-empty-p istate-old) (push pos empty-pos-list))))
+
+    ;;@todo sort pos-list?
+
+    (igo-board-changes
+     black-pos-list
+     white-pos-list
+     empty-pos-list
+     ko-pos-old
+     turn-old ;; Not necessarily the same as COLOR if allow illegal moves
+     (if (> num-black-prisoners 0) (- num-black-prisoners))
+     (if (> num-white-prisoners 0) (- num-white-prisoners)))))
 
 ;; TEST
 ;; (igo-board-changes-make-changes-undo 
@@ -1142,24 +1186,23 @@
 
 ;; Game - Move
 
-(defun igo-game-resign (game color)
+(defun igo-game-resign (game color &optional allow-illegal-move)
   (if (null color) (setq color (igo-game-turn game)))
   (when (and game
-             (not (igo-game-finished-p game)))
-    (if (not (igo-same-color-p color (igo-game-turn game)))
-        ;;illegal
-        nil
-      ;;legal
-      (igo-game-set-finished game)
-      ;; push undo stack & game tree node
-      (igo-game-push-undo game nil)
-      (igo-game-push-node game igo-resign color)
-      t)))
+             (not (igo-game-finished-p game))
+             (or allow-illegal-move
+                 (igo-same-color-p color (igo-game-turn game))))
+    ;;legal
+    (igo-game-set-finished game)
+    ;; push undo stack & game tree node
+    (igo-game-push-undo game nil)
+    (igo-game-push-node game igo-resign color)
+    t))
 
-(defun igo-game-pass (game color)
+(defun igo-game-pass (game color &optional allow-illegal-move)
   (when (and game
              (not (igo-game-finished-p game)))
-    (let ((undo (igo-board-pass (igo-game-board game) color)))
+    (let ((undo (igo-board-pass (igo-game-board game) color allow-illegal-move)))
       (when undo
         (igo-game-push-undo game undo)
         (igo-game-push-node game igo-pass color)
@@ -1168,11 +1211,11 @@
             (igo-game-set-finished game))
         t))))
 
-(defun igo-game-put-stone (game pos color)
+(defun igo-game-put-stone (game pos color &optional allow-illegal-move)
   (when (and game
              (not (igo-game-finished-p game)))
     ;; not finished
-    (let ((undo (igo-board-put-stone (igo-game-board game) pos color)))
+    (let ((undo (igo-board-put-stone (igo-game-board game) pos color allow-illegal-move)))
       (when undo
         ;;legal move
         (igo-game-push-undo game undo)
@@ -1297,9 +1340,9 @@
 (defun igo-game-apply-node (game next-node)
   (cond
    ((null next-node) nil)
-   ((igo-node-pass-p next-node) (igo-game-pass game (igo-node-color next-node)))
-   ((igo-node-resign-p next-node) (igo-game-resign game (igo-node-color next-node)))
-   ((igo-node-placement-p next-node) (igo-game-put-stone game (igo-node-move next-node) (igo-node-color next-node)))
+   ((igo-node-pass-p next-node) (igo-game-pass game (igo-node-color next-node) t)) ;;allow illegal move
+   ((igo-node-resign-p next-node) (igo-game-resign game (igo-node-color next-node) t)) ;;allow illegal move
+   ((igo-node-placement-p next-node) (igo-game-put-stone game (igo-node-move next-node) (igo-node-color next-node) t)) ;;allow illegal move
    ((igo-node-setup-p next-node) ;; setup node
     ;; @todo check current-node contains next-node
     (let* ((change (igo-node-get-setup-property next-node))
