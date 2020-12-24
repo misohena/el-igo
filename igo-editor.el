@@ -111,6 +111,8 @@
                    :show-last-move t
                    ;;:rotate180 nil
                    :editable t
+                   :allow-illegal-move nil
+                   :move-opposite-color nil
                    ) ;;11:properties
                   (list
                    (cons 'keymap-change nil)
@@ -291,6 +293,8 @@
     (define-key km "P" #'igo-editor-pass)
     (define-key km "p" #'igo-editor-put-stone)
     (define-key km "$" #'igo-editor-make-current-node-root)
+    (define-key km "I" #'igo-editor-toggle-allow-illegal-move)
+    (define-key km "R" #'igo-editor-toggle-move-opposite-color)
     (define-key km [igo-editor-pass mouse-1] #'igo-editor-pass)
     (define-key km [igo-editor-pass mouse-3] #'igo-editor-pass-click-r)
     (define-key km [igo-grid mouse-1] #'igo-editor-move-mode-board-click)
@@ -356,7 +360,16 @@
            (sep-1 menu-item "--")
            (igo-editor-quit menu-item "Quit" igo-editor-quit)
            (sep-2 menu-item "--")
-           (igo-editor-toggle-editable menu-item "Editable" igo-editor-toggle-editable :button (:toggle . (igo-editor-get-property (igo-editor-at-input) :editable)))
+           (igo-editor-toggle-allow-illegal-move
+            menu-item "Allow Illegal Move" igo-editor-toggle-allow-illegal-move
+            :button (:toggle . (igo-editor-allow-illegal-move-p (igo-editor-at-input))))
+           (igo-editor-toggle-move-opposite-color
+            menu-item "Reverse Color in Next Move" igo-editor-toggle-move-opposite-color
+            :button (:toggle . (igo-editor-move-opposite-color-p (igo-editor-at-input)))
+            :enable (igo-editor-allow-illegal-move-p (igo-editor-at-input)))
+           (igo-editor-toggle-editable
+            menu-item "Editable" igo-editor-toggle-editable
+            :button (:toggle . (igo-editor-editable-p (igo-editor-at-input))))
            (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
            (igo-editor-move-mode menu-item "Move Mode" igo-editor-move-mode)
            (igo-editor-free-edit-mode menu-item "Free Edit Mode" igo-editor-free-edit-mode)
@@ -755,7 +768,7 @@
         ;; Turn
         (svg-rectangle
          bar
-         (if (igo-black-p (igo-game-turn game))
+         (if (igo-black-p (igo-game-turn game)) ;;not next-move-color
              (- bar-w igo-ui-bar-h)
            0)
          (+ bar-y (- igo-ui-bar-h turn-line-h))
@@ -805,18 +818,20 @@
      board-view
      svg
      (igo-editor-get-property editor :show-branches)
-     board curr-node
+     board
+     (igo-editor-next-move-color editor)
+     curr-node
      ;; Called when branch is pass
-     (lambda (_index _num-nodes text text-color turn class-name)
+     (lambda (_index _num-nodes text text-color move-color class-name)
        (igo-editor-put-branch-text-on-button
-        svg image-input-map board-view 'igo-editor-pass text text-color turn class-name))
+        svg image-input-map board-view 'igo-editor-pass text text-color move-color class-name))
      ;; Called when branch is resign
      nil
      ;; Called when branch is setup node
-     (lambda (_index _num-nodes text text-color turn class-name)
+     (lambda (_index _num-nodes text text-color move-color class-name)
        (igo-editor-setup-nodes-area-put-branch-text
         editor
-        svg setup-node-index text text-color turn class-name)
+        svg setup-node-index text text-color move-color class-name)
        (setq setup-node-index (1+ setup-node-index))))
 
     ;; update clickable rect for setup nodes
@@ -1080,6 +1095,42 @@
           (if (igo-editor-graphical-mode-p editor)
               (igo-editor-update-image editor))))))
 
+;; Editor - Allow Illegal Move
+
+(defun igo-editor-allow-illegal-move-p (editor)
+  (igo-editor-get-property editor :allow-illegal-move))
+
+(defun igo-editor-toggle-allow-illegal-move (&optional editor)
+  (interactive)
+  (let ((editor (or editor (igo-editor-at-input))))
+    (if (igo-editor-toggle-property editor :allow-illegal-move)
+        (message "Allow illegal move.")
+      (message "Not allow illegal move.")
+      (igo-editor-cancel-move-opposite-color editor t))))
+
+;; Editor - Move by Opposite Turn's color
+
+(defun igo-editor-move-opposite-color-p (editor)
+  (igo-editor-get-property editor :move-opposite-color))
+
+(defun igo-editor-toggle-move-opposite-color (&optional editor)
+  (interactive)
+  (igo-editor-toggle-property-and-update-image editor :move-opposite-color))
+
+(defun igo-editor-cancel-move-opposite-color (editor update-image)
+  (igo-editor-set-property editor :move-opposite-color nil)
+  (if update-image (igo-editor-update-image editor)))
+
+(defun igo-editor-next-move-color (editor)
+  "Return next move's color. This can be different from the current turn(igo-game-turn) if illegal move is allowed."
+  (let* ((editor (or editor (igo-editor-at-input)))
+         (game (if editor (igo-editor-game editor))))
+    (if (and game
+             (igo-editor-move-opposite-color-p editor)
+             (igo-editor-allow-illegal-move-p editor))
+        (igo-opposite-color (igo-game-turn game))
+      (igo-game-turn game))))
+
 ;; Editor - Modified
 
 (defun igo-editor-update-on-modified (editor)
@@ -1209,8 +1260,7 @@
                clicked-node)
           (cond
            ((setq clicked-node
-                  (seq-find (lambda (nn) (= (igo-node-move nn) pos))
-                            (igo-node-next-nodes curr-node)))
+                  (igo-node-find-next-by-move curr-node pos (igo-editor-next-move-color editor)))
             (igo-editor-move-mode-branch-click-r editor curr-node clicked-node))
            ((setq clicked-node
                   (igo-node-find-move-back curr-node pos))
@@ -1225,8 +1275,7 @@
         (igo-editor-move-mode-branch-click-r
          editor curr-node
          (igo-node-find-next-by-move
-          curr-node igo-pass
-          (igo-game-turn (igo-editor-game editor)))))))
+          curr-node igo-pass (igo-editor-next-move-color editor))))))
 
 (defun igo-editor-setup-nodes-area-click ()
   (interactive)
@@ -1338,28 +1387,32 @@
     (igo-game-make-current-node-root (igo-editor-game editor))
     (igo-editor-update-on-modified editor)))
 
+(defun igo-editor-read-pos (editor)
+  (let ((board (igo-editor-board editor)))
+    (if (null board) (error "No game board."))
+
+    (let ((xy-str (read-string (format "Input X(1-%s) Y(1-%s): "
+                                       (igo-board-w board)
+                                       (igo-board-h board)))))
+      (if (string-match "^ *\\([0-9]+\\) +\\([0-9]+\\)" xy-str)
+          (let ((x (1- (string-to-number (match-string 1 xy-str))))
+                (y (1- (string-to-number (match-string 2 xy-str)))))
+            (if (and (>= x 0)
+                     (>= y 0)
+                     (< x (igo-board-w board))
+                     (< y (igo-board-h board)))
+                (igo-board-xy-to-pos board x y)
+              (error "Out of board.")))
+        (error "Invalid coordinate.")))))
+
 (defun igo-editor-put-stone (editor pos)
   (interactive
-   (let* ((editor (igo-editor-at-input))
-          (board (igo-editor-board editor)))
-     (if (null board) (error "No game board."))
+   (let ((editor (igo-editor-at-input)))
+     (list editor (igo-editor-read-pos editor))))
 
-     (let ((xy-str (read-string (format "Input X(1-%s) Y(1-%s): "
-                                        (igo-board-w board)
-                                        (igo-board-h board)))))
-       (if (string-match "^ *\\([0-9]+\\) +\\([0-9]+\\)" xy-str)
-           (let ((x (1- (string-to-number (match-string 1 xy-str))))
-                 (y (1- (string-to-number (match-string 2 xy-str)))))
-             (if (and (>= x 0) (>= y 0) (< x (igo-board-w board)) (< y (igo-board-h board)))
-                 (list editor (igo-board-xy-to-pos board x y))
-               (error "Out of board.")))
-         (error "Invalid coordinate.")))))
-
-  (if (null editor) (setq editor (igo-editor-at-input)))
-
-  (let ((game (if editor (igo-editor-game editor))))
-    (when game
-
+  (when-let ((editor (or editor (igo-editor-at-input)))
+             (game (igo-editor-game editor)))
+    (let ((color (igo-editor-next-move-color editor)))
       ;; insert text to buffer
       ;; (if (igo-game-legal-move-p game pos)
       ;;     (let* ((curr-node (igo-game-current-node game))
@@ -1388,9 +1441,11 @@
       (if (or (igo-editor-editable-p editor t)
               (igo-node-find-next-by-move (igo-game-current-node game)
                                           pos
-                                          (igo-game-turn game)))
-          (if (igo-game-put-stone game pos (igo-game-turn game))
+                                          color))
+          (if (igo-game-put-stone game pos color
+                                  (igo-editor-allow-illegal-move-p editor))
               (progn
+                (igo-editor-cancel-move-opposite-color editor nil)
                 (if (not (igo-editor-show-comment editor))
                     (message "Put at %s %s"
                              (1+ (igo-board-pos-to-x (igo-game-board game) pos))
@@ -1402,16 +1457,17 @@
 
 (defun igo-editor-pass (&optional editor)
   (interactive)
-  (if (null editor) (setq editor (igo-editor-at-input)))
 
-  (when editor
-    (let* ((game (igo-editor-game editor)))
+  (when-let ((editor (or editor (igo-editor-at-input)))
+             (game (igo-editor-game editor)))
+    (let ((color (igo-editor-next-move-color editor)))
       (if (or (igo-editor-editable-p editor t)
               (igo-node-find-next-by-move (igo-game-current-node game)
                                           igo-pass
-                                          (igo-game-turn game)))
-          (if (igo-game-pass game (igo-game-turn game))
+                                          color))
+          (if (igo-game-pass game color (igo-editor-allow-illegal-move-p editor))
               (progn
+                (igo-editor-cancel-move-opposite-color editor nil)
                 (message "Pass")
                 (igo-editor-show-comment editor)
                 (if (igo-editor-editable-p editor)

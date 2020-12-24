@@ -149,12 +149,13 @@ height."
                             (igo-game-current-node game))
     (igo-svg-remove-move-numbers svg)))
 
-(defun igo-board-view-update-branches (view svg visible board node
+(defun igo-board-view-update-branches (view svg visible board move-color node
                                             &optional fun-pass fun-resign fun-setup)
   (if visible
       (igo-svg-branches
        svg
        board
+       move-color
        (igo-board-view-interval view)
        node
        fun-pass fun-resign fun-setup)
@@ -384,7 +385,7 @@ height."
 
 ;; Branchs(Next Nodes) Text
 
-(defun igo-svg-branches (svg board grid-interval node &optional fun-pass fun-resign fun-setup)
+(defun igo-svg-branches (svg board move-color grid-interval node &optional fun-pass fun-resign fun-setup)
   ;; Remove old text
   (igo-svg-remove-branches svg)
 
@@ -392,30 +393,29 @@ height."
   (let* ((branch-index 0)
          (next-nodes (igo-node-next-nodes node))
          (num-next-nodes (length next-nodes))
-         (turn (igo-board-turn board))
-         (text-color (if (igo-black-p turn) "#000" "#fff"))
+         (text-color (if (igo-black-p move-color) "#000" "#fff"))
          (class-name "branches"))
     (dolist (next next-nodes)
       (let ((text (if (= num-next-nodes 1) "X" (string (+ ?A branch-index))))) ;;@todo x => svg-line?
         (cond
          ((igo-node-placement-p next)
-          (if (igo-same-color-p (igo-node-color next) turn)
+          (if (igo-same-color-p (igo-node-color next) move-color)
               (igo-svg-text-at-intersection
                (igo-svg-overlays-group svg)
                (igo-board-pos-to-x board (igo-node-move next))
                (igo-board-pos-to-y board (igo-node-move next))
                grid-interval text text-color (list :class class-name))))
          ((igo-node-pass-p next)
-          (if (and (igo-same-color-p (igo-node-color next) turn)
+          (if (and (igo-same-color-p (igo-node-color next) move-color)
                    (functionp fun-pass))
-              (funcall fun-pass branch-index num-next-nodes text text-color turn class-name)))
+              (funcall fun-pass branch-index num-next-nodes text text-color move-color class-name)))
          ((igo-node-resign-p next)
-          (if (and (igo-same-color-p (igo-node-color next) turn)
+          (if (and (igo-same-color-p (igo-node-color next) move-color)
                    (functionp fun-resign))
-              (funcall fun-resign branch-index num-next-nodes text text-color turn class-name)))
+              (funcall fun-resign branch-index num-next-nodes text text-color move-color class-name)))
          ((igo-node-setup-p next)
           (if (functionp fun-setup)
-              (funcall fun-setup branch-index num-next-nodes text text-color turn class-name)))))
+              (funcall fun-setup branch-index num-next-nodes text text-color move-color class-name)))))
       (setq branch-index (1+ branch-index)))))
 
 (defun igo-svg-remove-branches (svg)
