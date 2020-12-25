@@ -358,8 +358,6 @@
                        (igo-editor-next-fork menu-item "Next Fork" igo-editor-next-fork)
                        (igo-editor-select-next-node menu-item "Select Next Node" igo-editor-select-next-node)))
            (sep-1 menu-item "--")
-           (igo-editor-quit menu-item "Quit" igo-editor-quit)
-           (sep-2 menu-item "--")
            (igo-editor-toggle-allow-illegal-move
             menu-item "Allow Illegal Move" igo-editor-toggle-allow-illegal-move
             :button (:toggle . (igo-editor-allow-illegal-move-p (igo-editor-at-input))))
@@ -370,15 +368,20 @@
            (igo-editor-toggle-editable
             menu-item "Editable" igo-editor-toggle-editable
             :button (:toggle . (igo-editor-editable-p (igo-editor-at-input))))
-           (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
-           (igo-editor-move-mode menu-item "Move Mode" igo-editor-move-mode)
-           (igo-editor-free-edit-mode menu-item "Free Edit Mode" igo-editor-free-edit-mode)
-           (igo-editor-mark-edit-mode menu-item "Mark Edit Mode" igo-editor-mark-edit-mode)
+           (sep-2 menu-item "--")
+           (igo-editor-move-mode menu-item "Move Mode" igo-editor-move-mode :button (:radio . (eq (igo-editor-get-mode-name (igo-editor-at-input)) 'move)))
+           (igo-editor-free-edit-mode menu-item "Free Edit Mode" igo-editor-free-edit-mode :button (:radio . (eq (igo-editor-get-mode-name (igo-editor-at-input)) 'free)))
+           (igo-editor-mark-edit-mode menu-item "Mark Edit Mode" igo-editor-mark-edit-mode :button (:radio . (eq (igo-editor-get-mode-name (igo-editor-at-input)) 'mark)))
+           (sep-3 menu-item "--")
            (igo-editor-edit-comment menu-item "Edit Comment" igo-editor-edit-comment)
            (igo-editor-edit-move-number menu-item "Edit Move Number" igo-editor-edit-move-number)
            (igo-editor-edit-game-info menu-item "Edit Game Info" igo-editor-edit-game-info)
            (igo-editor-make-current-node-root menu-item "Make Current Node Root" igo-editor-make-current-node-root)
-           ))
+           (sep-4 menu-item "--")
+           (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
+           (sep-5 menu-item "--")
+           (igo-editor-quit menu-item "Quit" igo-editor-quit)
+            ))
 
 (defun igo-editor-main-menu (&optional editor)
   (interactive)
@@ -1155,12 +1158,28 @@
 
 ;; Editor - Editing Mode
 
-(defconst igo-editor-mode-idx-start 0)
-(defconst igo-editor-mode-idx-stop 1)
-(defconst igo-editor-mode-idx-properties 2)
+(defconst igo-editor-mode-idx-name 0)
+(defconst igo-editor-mode-idx-start 1)
+(defconst igo-editor-mode-idx-stop 2)
+(defconst igo-editor-mode-idx-properties 3)
 
-(defun igo-editor-mode-create (start stop &optional properties)
-  (vector start stop properties))
+(defun igo-editor-mode-create (name start stop &optional properties)
+  (vector name start stop properties))
+
+(defun igo-editor-mode-get-name (mode)
+  (if mode (aref mode igo-editor-mode-idx-name)))
+
+(defun igo-editor-mode-set-property (mode key value)
+  (let ((cell (assq key (aref mode igo-editor-mode-idx-properties))))
+    (if cell
+        (setcdr cell value)
+      (aset mode igo-editor-mode-idx-properties
+            (cons (cons key value)
+                  (aref mode igo-editor-mode-idx-properties))))))
+
+(defun igo-editor-mode-get-property (mode key)
+  (cdr (assq key (aref mode igo-editor-mode-idx-properties))))
+
 
 (defun igo-editor-mode-set (editor mode)
   ;; stop current mode
@@ -1173,16 +1192,8 @@
     (funcall (aref mode igo-editor-mode-idx-start) editor mode)
     (igo-editor--curr-mode-set editor mode)))
 
-(defun igo-editor-mode-set-property (mode key value)
-  (let ((cell (assq key (aref mode igo-editor-mode-idx-properties))))
-    (if cell
-        (setcdr cell value)
-      (aset mode igo-editor-mode-idx-properties
-            (cons (cons key value)
-                  (aref mode igo-editor-mode-idx-properties))))))
-
-(defun igo-editor-mode-get-property (mode key)
-  (cdr (assq key (aref mode igo-editor-mode-idx-properties))))
+(defun igo-editor-get-mode-name (editor)
+  (if editor (igo-editor-mode-get-name (igo-editor-curr-mode editor))))
 
 (defun igo-editor-set-mode-property (editor key value)
   (if editor
@@ -1207,6 +1218,7 @@
     (igo-editor-mode-set
      editor
      (igo-editor-mode-create
+      'move
       #'igo-editor-move-mode-start
       #'igo-editor-move-mode-stop
       nil))
@@ -1485,6 +1497,7 @@
     (igo-editor-mode-set
      editor
      (igo-editor-mode-create
+      'free
       #'igo-editor-free-edit-mode-start
       #'igo-editor-free-edit-mode-stop
       (list
@@ -1692,6 +1705,7 @@
     (igo-editor-mode-set
      editor
      (igo-editor-mode-create
+      'mark
       #'igo-editor-mark-edit-mode-start
       #'igo-editor-mark-edit-mode-stop
       (list
