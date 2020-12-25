@@ -256,7 +256,7 @@
     (define-key km (kbd "C-c q") #'igo-editor-quit)
     (define-key km (kbd "C-x C-q") #'igo-editor-toggle-editable)
     ;; display mode
-    (define-key km "t" #'igo-editor-text-mode)
+    ;;(define-key km "t" #'igo-editor-text-mode)
     (define-key km (kbd "C-c g") #'igo-editor-text-mode)
     ;; navigation
     (define-key km "a" #'igo-editor-first-node)
