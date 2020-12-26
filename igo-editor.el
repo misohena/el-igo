@@ -119,6 +119,7 @@
                    (cons 'text-mode nil)
                    (cons 'graphical-mode nil)
                    ) ;;12:hooks
+                  nil ;;13:copied node
                   )))
     ;;(message "make overlay %s" ov)
     (overlay-put ov 'igo-editor editor)
@@ -145,6 +146,7 @@
 (defun igo-editor-curr-mode (editor) (aref editor 10))
 (defun igo-editor-properties (editor) (aref editor 11))
 (defun igo-editor-event-hooks (editor) (aref editor 12))
+(defun igo-editor-copied-node (editor) (aref editor 13))
 
 ;;(defun igo-editor--overlay-set (editor ov) (aset editor 0 ov))
 (defun igo-editor--game-set (editor game) (aset editor 1 game))
@@ -158,7 +160,8 @@
 (defun igo-editor--display-mode-set (editor dmode) (aset editor 9 dmode))
 (defun igo-editor--curr-mode-set (editor mode) (aset editor 10 mode))
 (defun igo-editor--properties-set (editor props) (aset editor 11 props))
-(defun igo-editor--event-hooks (editor props) (aset editor 12 props))
+;;(defun igo-editor--event-hooks-set (editor events) (aset editor 12 events))
+(defun igo-editor--copied-node-set (editor node) (aset editor 13 node))
 
 (defun igo-editor-begin (editor) (overlay-start (igo-editor-overlay editor)))
 (defun igo-editor-end (editor) (overlay-end (igo-editor-overlay editor)))
@@ -373,10 +376,15 @@
            (igo-editor-free-edit-mode menu-item "Free Edit Mode" igo-editor-free-edit-mode :button (:radio . (eq (igo-editor-get-mode-name (igo-editor-at-input)) 'free)))
            (igo-editor-mark-edit-mode menu-item "Mark Edit Mode" igo-editor-mark-edit-mode :button (:radio . (eq (igo-editor-get-mode-name (igo-editor-at-input)) 'mark)))
            (sep-3 menu-item "--")
+           (tree-menu menu-item "Edit Structure"
+                      (keymap
+                       (igo-editor-make-current-node-root menu-item "Make Current Node Root" igo-editor-make-current-node-root)
+                       (igo-editor-cut-current-node menu-item "Cut Current Node" igo-editor-cut-current-node)
+                       (igo-editor-copy-current-node menu-item "Copy Current Node" igo-editor-copy-current-node)
+                       (igo-editor-paste-current-node menu-item "Paste to Current Node" igo-editor-paste-current-node)))
            (igo-editor-edit-comment menu-item "Edit Comment" igo-editor-edit-comment)
            (igo-editor-edit-move-number menu-item "Edit Move Number" igo-editor-edit-move-number)
            (igo-editor-edit-game-info menu-item "Edit Game Info" igo-editor-edit-game-info)
-           (igo-editor-make-current-node-root menu-item "Make Current Node Root" igo-editor-make-current-node-root)
            (sep-4 menu-item "--")
            (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
            (sep-5 menu-item "--")
@@ -1312,6 +1320,20 @@
                      (igo-editor-move-mode-select-branch
                       menu-item "Put Here"
                       igo-editor-move-mode-select-branch)
+
+                     (igo-editor-move-mode-cut-branch
+                      menu-item "Cut This Branch"
+                      igo-editor-move-mode-cut-branch
+                      :enable ,(igo-editor-editable-p editor))
+                     (igo-editor-move-mode-copy-branch
+                      menu-item "Copy This Branch"
+                      igo-editor-move-mode-copy-branch)
+                     (igo-editor-move-mode-paste-branch
+                      menu-item "Paste to This Branch"
+                      igo-editor-move-mode-paste-branch
+                      :enable ,(and (igo-editor-editable-p editor)
+                                    (igo-editor-has-copied-node-p editor)))
+
                      (igo-editor-move-mode-delete-branch
                       menu-item "Delete This Branch"
                       igo-editor-move-mode-delete-branch
@@ -1333,6 +1355,15 @@
 (defun igo-editor-move-mode-select-branch (editor _curr-node clicked-node)
   (if (igo-game-apply-node (igo-editor-game editor) clicked-node)
       (igo-editor-update-image editor)))
+
+(defun igo-editor-move-mode-cut-branch (editor _curr-node clicked-node)
+  (igo-editor-cut-tree editor clicked-node))
+
+(defun igo-editor-move-mode-copy-branch (editor _curr-node clicked-node)
+  (igo-editor-copy-tree editor clicked-node))
+
+(defun igo-editor-move-mode-paste-branch (editor _curr-node clicked-node)
+  (igo-editor-paste-tree editor clicked-node))
 
 (defun igo-editor-move-mode-delete-branch (editor curr-node clicked-node)
   (when (igo-editor-editable-p editor t)
@@ -1358,6 +1389,20 @@
                       menu-item "Back to This Move"
                       igo-editor-move-mode-undo-to
                       :enable ,(not (eq curr-node clicked-node)))
+
+                     (igo-editor-move-mode-cut-move
+                      menu-item "Cut This Move and After"
+                      igo-editor-move-mode-cut-move
+                      :enable ,(and (not (igo-node-root-p clicked-node))
+                                    (igo-editor-editable-p editor)))
+                     (igo-editor-move-mode-copy-move
+                      menu-item "Copy This Move and After"
+                      igo-editor-move-mode-copy-move)
+                     (igo-editor-move-mode-paste-move
+                      menu-item "Paste after This Move"
+                      igo-editor-move-mode-paste-move
+                      :enable ,(igo-editor-editable-p editor))
+
                      (igo-editor-move-mode-delete-move
                       menu-item "Delete This Move and After"
                       igo-editor-move-mode-delete-move
@@ -1375,6 +1420,15 @@
 (defun igo-editor-move-mode-undo-to (editor clicked-node)
   (igo-game-undo-to (igo-editor-game editor) clicked-node)
   (igo-editor-update-image editor))
+
+(defun igo-editor-move-mode-cut-move (editor clicked-node)
+  (igo-editor-cut-tree editor clicked-node))
+
+(defun igo-editor-move-mode-copy-move (editor clicked-node)
+  (igo-editor-copy-tree editor clicked-node))
+
+(defun igo-editor-move-mode-paste-move (editor clicked-node)
+  (igo-editor-paste-tree editor clicked-node))
 
 (defun igo-editor-move-mode-delete-move (editor clicked-node)
   (when (igo-editor-editable-p editor t)
@@ -2033,6 +2087,71 @@
                 (igo-node-set-sgf-property root-node prop-id (list value))))))
       (igo-editor-update-on-modified editor)
       (kill-buffer igo-editor-game-info-buffer-name))))
+
+;; Editor - Copy Tree
+
+(defun igo-editor-has-copied-node-p (editor)
+  (not (null (igo-editor-copied-node editor))))
+
+(defun igo-editor-copy-current-node (&optional editor)
+  (interactive)
+  (when-let ((editor (or editor (igo-editor-at-input)))
+             (game (igo-editor-game editor)))
+    (igo-editor-copy-tree editor (igo-game-current-node game))))
+
+(defun igo-editor-cut-current-node (&optional editor)
+  (interactive)
+  (when-let ((editor (or editor (igo-editor-at-input)))
+             (game (igo-editor-game editor)))
+    (igo-editor-cut-tree editor (igo-game-current-node game))))
+
+(defun igo-editor-paste-current-node (&optional editor)
+  (interactive)
+  (when-let ((editor (or editor (igo-editor-at-input)))
+             (game (igo-editor-game editor)))
+    (igo-editor-paste-tree editor (igo-game-current-node game))))
+
+(defun igo-editor-copy-tree (editor node)
+  (if editor
+      (igo-editor--copied-node-set
+       editor
+       (if node (igo-node-clone node)))))
+
+(defun igo-editor-paste-tree (editor target-node)
+  (if (and editor (igo-editor-editable-p editor t) target-node)
+      (when-let ((copied-node (igo-editor-copied-node editor)))
+        (when (igo-node-move-p copied-node)
+          ;; Cannot paste an existing move
+          (if (igo-node-find-next-by-move target-node
+                                          (igo-node-move copied-node)
+                                          (igo-node-color copied-node))
+              (error "Move %s by %s already exists"
+                     (igo-move-string (igo-node-move copied-node)
+                                      (igo-editor-board editor))
+                     (igo-node-color copied-node)))
+          ;; @todo Check illegal move if not allow-illegal-move-p (needs board state)
+          (if (and
+               (not (igo-editor-allow-illegal-move-p editor))
+               (not (igo-same-color-p (igo-node-next-color target-node)
+                                      (igo-node-color copied-node))))
+              (error "Invalid color")))
+        ;; Add copied-node to target-node
+        (igo-node-add-next-node target-node
+                                (igo-node-clone copied-node target-node))
+        (igo-editor-update-on-modified editor))))
+
+(defun igo-editor-cut-tree (editor node)
+  (when (and editor (igo-editor-editable-p editor t) node)
+    (if (igo-node-root-p node)
+        (error "Cannot cut root node"))
+    (if (igo-node-ancestor-p (igo-editor-current-node editor) node)
+        (igo-game-undo-to (igo-editor-game editor) (igo-node-prev node)))
+    (if (eq node (igo-editor-current-node editor))
+        (igo-game-undo (igo-editor-game editor)))
+
+    (igo-editor-copy-tree editor node)
+    (igo-node-delete-next (igo-node-prev node) node)
+    (igo-editor-update-on-modified editor)))
 
 ;;
 ;; model

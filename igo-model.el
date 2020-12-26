@@ -62,7 +62,17 @@
 (defun igo-pass-p (move) (= move igo-pass))
 (defun igo-resign-p (move) (= move igo-resign))
 (defun igo-placement-p (move) (igo-pos-on-board-p move))
-
+(defun igo-move-string (move &optional board)
+  (cond
+   ((igo-pass-p move) "Pass")
+   ((igo-resign-p move) "Resign")
+   ((igo-placement-p move)
+    (if board
+        (format "%s %s"
+                (1+ (igo-board-pos-to-x board move))
+                (1+ (igo-board-pos-to-y board move)))
+      (format "%s" move)))
+   (t "Not Move")))
 
 ;;
 ;; Color & Empty (Intersection State)
@@ -689,6 +699,36 @@
 (defun igo-node-next-nodes (node) (aref node igo-node--idx-next-nodes))
 (defun igo-node-last-visited (node) (aref node igo-node--idx-last-visited))
 
+(defun igo-node-clone (node &optional new-prev)
+  (let ((new-node (igo-node new-prev
+                            (igo-node-move node)
+                            (igo-node-color node))))
+    ;; clone properties
+    (aset new-node igo-node--idx-properties
+          (igo-node-clone-properties (igo-node-properties node)))
+    ;; clone next-nodes
+    (aset new-node igo-node--idx-next-nodes
+          (igo-node-clone-next-nodes (igo-node-next-nodes node) new-node))
+    ;; clone last-visited
+    (if-let ((index (seq-position (igo-node-next-nodes node)
+                                  (igo-node-last-visited node) #'eq)))
+        (aset new-node igo-node--idx-last-visited
+              (nth index (igo-node-next-nodes new-node))))
+    new-node))
+
+(defun igo-node-clone-properties (props)
+  ;; Copy properties
+  ;; - ATOM (symbol, string, number)
+  ;; - list
+  ;; - vector
+  ;; - igo-board-changes (vector)
+  (copy-tree props))
+
+(defun igo-node-clone-next-nodes (next-nodes new-prev)
+  (mapcar (lambda (next)
+            (igo-node-clone next new-prev))
+          next-nodes))
+
 ;; Node - Node Type(Setup or Move(Resign, Pass, Placement))
 
 (defun igo-node-set-move-and-color (node move color)
@@ -787,6 +827,20 @@
       (setq node (igo-node-prev node)))
     num))
 
+(defun igo-node-next-color (node)
+  (let (result)
+    (while (and
+            node
+            (null
+             (setq result
+                   ;; opposite color or PL property
+                   (if (igo-node-move-p node)
+                       (igo-opposite-color (igo-node-color node))
+                     (if-let ((changes (igo-node-get-setup-property node)))
+                         (igo-board-changes-turn changes))))))
+      (setq node (igo-node-prev node)))
+    (or result 'black)))
+
 (defun igo-node-path-from-root (node &optional fork-only)
   (let (dirs prev)
     (while (and node (setq prev (igo-node-prev node)))
@@ -811,6 +865,8 @@
       (setq n (1- n)))
     (if (and clamp-p (null node)) next node)))
 
+(defun igo-node-ancestor-p (node ancestor)
+  (igo-node-descendant-p ancestor node))
 
 ;; Node - Next Nodes(Children)
 
@@ -981,6 +1037,16 @@
           (aset node igo-node--idx-next-nodes next-nodes)
           t)))))
 
+(defun igo-node-descendant-p (node descendant)
+  (cond
+   ((null node) nil)
+   ((null descendant) nil)
+   ((eq node descendant) nil)
+   (t
+    (setq descendant (igo-node-prev descendant))
+    (while (and descendant (not (eq descendant node)))
+      (setq descendant (igo-node-prev descendant)))
+    (not (null descendant)))))
 
 ;; Node - Properties
 
