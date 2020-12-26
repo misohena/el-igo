@@ -646,6 +646,30 @@ ex:
 
       seq-head-node)))
 
+;;
+;; To igo-game
+;;
+
+(defun igo-game-from-sgf-buffer (begin end)
+  (let* ((sgf-tree
+          (save-excursion
+            (save-restriction
+              (narrow-to-region begin end)
+              (goto-char (point-min))
+              (let* ((strm (current-buffer))
+                     (tree (igo-sgf-parse-tree strm)))
+                ;; Check text after end of SGF.
+                ;; If there is unnecessary text, it will disappear when editing.
+                (igo-sgf-skip-ws strm)
+                (if (igo-sgf-scan strm)
+                    (igo-sgf-error strm "Unnecessary text after end of SGF."))
+                tree))))
+         (game-tree (igo-sgf-root-tree-to-game-tree sgf-tree))
+         (size (igo-sgf-node-get-board-size (igo-sgf-tree-root-node sgf-tree)))
+         (game (igo-game (car size) (cdr size) game-tree)))
+
+    game))
+
 
 ;;
 ;; To SGF String

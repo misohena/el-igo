@@ -441,7 +441,7 @@
         ;; Re-parse buffer text
         ;;(message "Parse buffer text %s %s" begin end)
         (condition-case err
-            (let ((game (igo-editor-make-game-from-sgf-buffer begin end)))
+            (let ((game (igo-game-from-sgf-buffer begin end)))
 
               ;; Set current node
               (let ((old-game (igo-editor-game editor)))
@@ -2181,30 +2181,6 @@
     (igo-editor-copy-tree editor node)
     (igo-node-delete-next (igo-node-prev node) node)
     (igo-editor-update-on-modified editor)))
-
-;;
-;; model
-;;
-
-(defun igo-editor-make-game-from-sgf-buffer (begin end) ;;@todo igo-model.elへ移動すべき。igo-game-from-sgf-bufferみたいな名前で。
-  (let* ((sgf-tree
-          (save-excursion
-            (save-restriction
-              (narrow-to-region begin end)
-              (goto-char (point-min))
-              (let* ((strm (current-buffer))
-                     (tree (igo-sgf-parse-tree strm)))
-                ;; Check text after end of SGF.
-                ;; If there is unnecessary text, it will disappear when editing.
-                (igo-sgf-skip-ws strm)
-                (if (igo-sgf-scan strm)
-                    (igo-sgf-error strm "Unnecessary text after end of SGF."))
-                tree))))
-         (game-tree (igo-sgf-root-tree-to-game-tree sgf-tree))
-         (size (igo-sgf-node-get-board-size (igo-sgf-tree-root-node sgf-tree)))
-         (game (igo-game (car size) (cdr size) game-tree)))
-
-    game))
 
 ;;
 ;; Mouse Utility
