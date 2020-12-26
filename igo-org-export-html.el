@@ -346,9 +346,10 @@ Modify all igo special blocks in the DATA tree."
 (defun igo-org-make-options-for-js_igo (options)
   (let ((json
          (concat
-          (if (not (igo-org-opt-bool-value :status-bar options
-                                           igo-editor-status-bar-visible))
-              "\"ui\": {\"top\":[], \"bottom\":[\"MoveControl\", \"HistoryControl\", \"ViewControl\", \"Comment\"]},")
+          "\"ui\": {\"top\":["
+          (if (igo-org-opt-bool-value :status-bar options igo-editor-status-bar-visible)
+              "\"GameStatus\"")
+          "], \"bottom\":[[\"UndoAll\",\"Undo\",\"Redo\",\"RedoAll\",\"Pass\",\"Menu\"], \"ViewControl\", \"Comment\"]},"
           (if (igo-org-opt-bool-value :move-number options)
               "\"showMoveNumber\": true,")
           (if (igo-org-opt-bool-value :branch-text options "t")
