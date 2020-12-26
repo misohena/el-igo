@@ -170,7 +170,8 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 | 操作                   | 説明                     | 関数                             |
 |------------------------+--------------------------+----------------------------------|
 | Quitボタンクリック     | 着手モードへ切り替え     | igo-editor-move-mode             |
-| 盤面をクリック         | 交点を選択中の状態にする | igo-editor-free-edit-board-click |
+| p                      | 交点を選択中の状態にする | igo-editor-free-edit-put         |
+| 盤面をクリック         | 交点を選択中の状態にする | igo-editor-free-edit-board-down |
 | B, Blackボタンクリック | 黒石を選択する           | igo-editor-free-edit-black       |
 | W, Whiteボタンクリック | 白石を選択する           | igo-editor-free-edit-white       |
 | E, Emptyボタンクリック | 空点を選択する           | igo-editor-free-edit-empty       |
@@ -181,7 +182,8 @@ igo-sgf-mode.el も igo-org.el も igo-editor.el を使って実装されてい�
 | 操作                  | 説明                     | 関数                             |
 |-----------------------+--------------------------+----------------------------------|
 | Quitボタンクリック    | 着手モードへ切り替え     | igo-editor-move-mode             |
-| 盤面をクリック        | 交点を選択中の状態にする | igo-editor-mark-edit-board-click |
+| p                     | 交点を選択中の状態にする | igo-editor-mark-edit-put         |
+| 盤面をクリック        | 交点を選択中の状態にする | igo-editor-mark-edit-board-down |
 | X, Xボタンクリック    | ×マークを選択する       | igo-editor-mark-edit-cross       |
 | O, Oボタンクリック    | ○マークを選択する       | igo-editor-mark-edit-circle      |
 | S, SQボタンクリック   | □マークを選択する       | igo-editor-mark-edit-square      |

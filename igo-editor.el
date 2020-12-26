@@ -323,6 +323,7 @@
     (define-key km "W" #'igo-editor-free-edit-white)
     (define-key km "E" #'igo-editor-free-edit-empty)
     (define-key km "T" #'igo-editor-free-edit-toggle-turn)
+    (define-key km "p" #'igo-editor-free-edit-put)
     km))
 
 (defvar igo-editor-mark-edit-mode-map
@@ -344,6 +345,7 @@
     (define-key km "T" #'igo-editor-mark-edit-triangle)
     (define-key km "E" #'igo-editor-mark-edit-text)
     (define-key km "D" #'igo-editor-mark-edit-del)
+    (define-key km "p" #'igo-editor-mark-edit-put)
     km))
 
 (defvar igo-editor-main-menu-map
@@ -1630,6 +1632,18 @@
                  (igo-editor-get-mode-property editor :istate)))
                (igo-editor-update-on-modified editor))))))))
 
+(defun igo-editor-free-edit-put (editor pos)
+  (interactive
+   (let ((editor (igo-editor-at-input)))
+     (list editor (igo-editor-read-pos editor))))
+
+  (when (and editor
+             (igo-editor-editable-p editor t))
+    (igo-editor-set-intersection-setup-at
+     editor pos
+     (igo-editor-get-mode-property editor :istate))
+    (igo-editor-update-on-modified editor)))
+
 (defun igo-editor-set-intersection-setup-at (editor pos istate)
   "Add stone to setup property of current node."
   (if (not (igo-same-intersection-state-p 
@@ -1873,6 +1887,21 @@
               mark-type nil)))))))))
 
 (defun igo-editor-mark-edit-put (editor xy mark-type text)
+  (interactive
+   (let* ((editor (igo-editor-at-input))
+          (pos (igo-editor-read-pos editor))
+          (mark-type (igo-editor-get-mode-property editor :mark-type))
+          (text (if (eq mark-type 'text) (read-string "Text: ")))
+          (board (igo-editor-board editor)))
+     (when (eq mark-type 'text)
+       (if (string= text "") (error "No text"))
+       (igo-editor-set-mode-property editor :mark-text text))
+     (list editor
+           (cons (igo-board-pos-to-x board pos)
+                 (igo-board-pos-to-y board pos))
+           mark-type
+           text)))
+
   (when (and xy (igo-editor-editable-p editor t))
     (let* ((pos (igo-board-xy-to-pos (igo-editor-board editor) (car xy) (cdr xy)))
            (curr-node (igo-editor-current-node editor))
