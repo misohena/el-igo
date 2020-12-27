@@ -364,7 +364,7 @@ Modify all igo special blocks in the DATA tree."
                 (lambda (q)
                   (cond
                    ((numberp q) (number-to-string q))
-                   ((string-match "\\`[0-9]+\\'" q) q)
+                   ((string-match "\\`-?[0-9]+\\'" q) q)
                    (t (concat "\"" q "\""))))
                 (igo-org-opt-split-path path)
                 ",")
