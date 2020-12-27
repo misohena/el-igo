@@ -3,7 +3,7 @@
 
 Emacs内で囲碁の盤面を表示し、棋譜(SGF形式)を編集します。
 
-[[file:./screenshot/igo-org.gif]]
+[[file:./screenshot/igo-org-20201227.gif]]
 
 * 動作環境
 Emacs 27.1
