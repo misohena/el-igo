@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'widget)
+(require 'wid-edit)
 (require 'igo-model)
 (require 'igo-sgf-parser)
 (require 'igo-view)
