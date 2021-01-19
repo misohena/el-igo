@@ -114,6 +114,7 @@
                    :editable t
                    :allow-illegal-move nil
                    :move-opposite-color nil
+                   :grid-interval nil
                    ) ;;11:properties
                   (list
                    (cons 'keymap-change nil)
@@ -643,7 +644,9 @@
         (igo-editor--image-scale-set editor image-scale)
 
         ;; New Board View (Determine grid interval and board pixel sizes)
-        (setq board-view (igo-board-view board))
+        (setq board-view (igo-board-view
+                          board
+                          (igo-editor-get-property editor :grid-interval)))
         (igo-editor--board-view-set editor board-view)
 
         ;; New SVG Root
@@ -719,6 +722,9 @@
      key
      (not (igo-editor-get-property editor key))
      recreate)))
+
+(defun igo-editor-set-grid-interval (editor interval)
+  (igo-editor-set-property-and-update-image editor :grid-interval interval t))
 
 (defun igo-editor-set-status-bar-visible (editor visible)
   ;;needs recreate image

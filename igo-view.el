@@ -78,15 +78,17 @@ height."
 
 ;; Board View - Constructor
 
-(defun igo-board-view (board)
+(defun igo-board-view (board &optional interval)
   (let* ((w (igo-board-w board))
          (h (igo-board-h board))
          (max-w (igo-board-view-size-max-spec t))
          (max-h (igo-board-view-size-max-spec nil))
-         (ave-interval-w (/ max-w (+ (1- w) 3))) ;; 3=margin*2
-         (ave-interval-h (/ max-h (+ (1- h) 3))) ;; 3=margin*2
-         (ave-interval (min ave-interval-w ave-interval-h))
-         (interval (max (min ave-interval igo-board-view-grid-interval-default)
+         (max-interval-w (/ max-w (+ (1- w) 3))) ;; 3=margin*2
+         (max-interval-h (/ max-h (+ (1- h) 3))) ;; 3=margin*2
+         (max-interval (min max-interval-w max-interval-h))
+         (interval (max (min (or interval
+                                 igo-board-view-grid-interval-default)
+                             max-interval)
                         igo-board-view-grid-interval-min))
          (margin (/ (* 3 interval) 2)) ;; 3=margin*2
          (view (vector w h margin interval)))

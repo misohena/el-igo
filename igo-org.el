@@ -83,45 +83,6 @@
                            (igo-editor-last-error-end editor)
                            'face 'igo-org-error-face))))
 
-(defun igo-org-create-editor (start end options-str)
-  (let ((editor (igo-editor start end nil nil t))
-        (options (org-babel-parse-header-arguments options-str t)))
-    ;; Apply options to editor
-    (dolist (opt options)
-      (let ((key (car opt))
-            (value (cdr opt)))
-        (cond
-         ((eq key :status-bar)
-          (igo-editor-set-status-bar-visible editor (igo-org-opt-bool value)))
-         ((eq key :move-number)
-          (igo-editor-set-move-number-visible editor (igo-org-opt-bool value)))
-         ((eq key :branch-text)
-          (igo-editor-set-branch-text-visible editor (igo-org-opt-bool value)))
-         ((eq key :editable)
-          (igo-editor-set-editable editor (igo-org-opt-bool value)))
-         ((eq key :read-only)
-          (igo-editor-set-editable editor (not (igo-org-opt-bool value))))
-         ((eq key :path)
-          (igo-editor-find-by-queries editor (igo-org-opt-split-path value)))
-         )))
-    editor))
-
-(defun igo-org-opt-split-path (value)
-  (cond
-   ((null value) nil)
-   ((numberp value) (list value))
-   ((stringp value) (split-string value "[/ \f\t\n\r\v]+" t "[ \f\t\n\r\v]+"))))
-
-(defun igo-org-opt-bool (value)
-  (null (member value '("no" "nil" nil))))
-
-(defun igo-org-opt-value (key options &optional default-value)
-  (cdr (or (assq key options) (cons key default-value))))
-
-(defun igo-org-opt-bool-value (key options &optional default-value)
-  (igo-org-opt-bool
-   (igo-org-opt-value key options default-value)))
-
 ;; Fontify src block (#+begin_src sgf ~ #+end_src)
 
 (defun igo-org--fontify-src-block-advice (old-func lang start end)
@@ -208,6 +169,58 @@
                 (looking-at "[ \t]*#\\+end_\\(src\\|igo\\)"))))
         ;;(message "delete overlay %s" ov)
         (delete-overlay ov)))))
+
+;;
+;; Create Editor
+;;
+
+(defun igo-org-create-editor (start end options-str)
+  (let ((editor (igo-editor start end nil nil t))
+        (options (org-babel-parse-header-arguments options-str t)))
+    ;; Apply options to editor
+    (dolist (opt options)
+      (let ((key (car opt))
+            (value (cdr opt)))
+        (cond
+         ((eq key :status-bar)
+          (igo-editor-set-status-bar-visible editor (igo-org-opt-bool value)))
+         ((eq key :move-number)
+          (igo-editor-set-move-number-visible editor (igo-org-opt-bool value)))
+         ((eq key :branch-text)
+          (igo-editor-set-branch-text-visible editor (igo-org-opt-bool value)))
+         ((eq key :editable)
+          (igo-editor-set-editable editor (igo-org-opt-bool value)))
+         ((eq key :read-only)
+          (igo-editor-set-editable editor (not (igo-org-opt-bool value))))
+         ((eq key :path)
+          (igo-editor-find-by-queries editor (igo-org-opt-split-path value)))
+         ((eq key :grid-interval)
+          (igo-editor-set-grid-interval editor (igo-org-opt-int value)))
+         )))
+    editor))
+
+(defun igo-org-opt-split-path (value)
+  (cond
+   ((null value) nil)
+   ((numberp value) (list value))
+   ((stringp value) (split-string value "[/ \f\t\n\r\v]+" t "[ \f\t\n\r\v]+"))))
+
+(defun igo-org-opt-bool (value)
+  (null (member value '("no" "nil" nil))))
+
+(defun igo-org-opt-int (value)
+  (cond
+   ((integerp value) value)
+   ((numberp value) (round value))
+   ((stringp value) (string-to-number value))
+   (t nil)))
+
+(defun igo-org-opt-value (key options &optional default-value)
+  (cdr (or (assq key options) (cons key default-value))))
+
+(defun igo-org-opt-bool-value (key options &optional default-value)
+  (igo-org-opt-bool
+   (igo-org-opt-value key options default-value)))
 
 
 (provide 'igo-org)
