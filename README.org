@@ -57,6 +57,13 @@ org文書内にigo特殊ブロックを挿入します。(操作例: C-c C-, SPC
 | :display       | エクスポート時の表示方法    | 表示方法を示す値([[#org-export-options][後述]])                                        |
 | :grid-interval | 格子線の間隔                | ピクセル数(デフォルトは igo-board-view-grid-interval-default) |
 
+orgファイル内に ~#+IGO_BLOCK_DEFAULTS:~ を記述することで、ファイル内でのオプションのデフォルト値を設定できます。(注意:現在の所、変更時はファイルを開き直す必要があります)
+
+例:
+#+begin_src org
+,#+IGO_BLOCK_DEFAULTS: :grid-interval 24 :move-number t
+#+end_src
+
 *** :pathの指定方法
 
 :path オプションは最初に表示する盤面(ゲーム木のノード)を指定します。

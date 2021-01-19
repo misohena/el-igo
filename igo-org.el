@@ -37,7 +37,8 @@
 
 (defun igo-org-setup ()
   (interactive)
-  (with-eval-after-load "org-src"
+  (with-eval-after-load "org"
+    (add-hook 'org-mode-hook #'igo-org-startup)
     (igo-org-hook-fontify-block)))
 
 ;;
@@ -177,6 +178,10 @@
 (defun igo-org-create-editor (start end options-str)
   (let ((editor (igo-editor start end nil nil t))
         (options (org-babel-parse-header-arguments options-str t)))
+    ;; Merge in-buffer settings to options
+    (dolist (default-opt igo-org-block-defaults) ;;@todo Is (org-babel-parse-header-arguments (igo-org-get-buffer-option "igo_block_defaults")) better? But slow for big files
+      (if (not (seq-some (lambda (o) (eq (car o) (car default-opt))) options))
+          (push default-opt options)))
     ;; Apply options to editor
     (dolist (opt options)
       (let ((key (car opt))
@@ -221,6 +226,22 @@
 (defun igo-org-opt-bool-value (key options &optional default-value)
   (igo-org-opt-bool
    (igo-org-opt-value key options default-value)))
+
+;; #+IGO_BLOCK_DEFAULTS: <properties>
+
+(defvar-local igo-org-block-defaults nil)
+
+(defun igo-org-startup ()
+  (if-let ((block-defaults-str (igo-org-get-buffer-option "igo_block_defaults")))
+      (setq igo-org-block-defaults
+            (org-babel-parse-header-arguments block-defaults-str t))))
+
+(defun igo-org-get-buffer-option (keyword)
+  (save-excursion
+    (goto-char (point-min))
+    (let ((re-keyword (org-make-options-regexp (list keyword))))
+      (when (re-search-forward re-keyword nil t 1)
+        (match-string-no-properties 2)))))
 
 
 (provide 'igo-org)
