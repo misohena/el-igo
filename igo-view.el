@@ -377,7 +377,8 @@ height."
         (setq move-number
               (cond
                ((and prev mn) (igo-node-move-number prev)) ;; recalculate
-               ((igo-node-move-p node) (1- move-number)))) ;; decrement
+               ((igo-node-move-p node) (1- move-number)) ;; decrement
+               (t move-number))) ;; keep number
         (setq node prev)))))
 
 (defun igo-svg-remove-move-numbers (svg)
