@@ -475,19 +475,19 @@ ex:
       (let ((lt (igo-sgf-value-as-point-xy (car values) w h))
             (rb (igo-sgf-value-as-point-xy (cdr values) w h))
             points)
-        (loop for y from (cdr lt) to (cdr rb) do
-              (loop for x from (car lt) to (car rb) do
-                    (push (cons x y) points)))
+        (cl-loop for y from (cdr lt) to (cdr rb) do
+                 (cl-loop for x from (car lt) to (car rb) do
+                          (push (cons x y) points)))
         (nreverse points)))))
 
 (defun igo-sgf-values-as-point-pos-list (values w h)
   "ex: (igo-sgf-values-as-point-pos-list (mapcar (lambda (v) (igo-sgf-make-prop-value \"\" nil v nil)) '(\"aa\" \"ba\" \"ab\" \"ca:da\")) 9 9) => (0 1 9 2 3)"
-  (loop for value in values nconc
-        ;; convert (x . y) to pos
-        (seq-map
-         (lambda (xy) (igo-xy-to-pos (car xy) (cdr xy) w))
-         ;; expand compose
-         (igo-sgf-expand-compressed-point value w h))))
+  (cl-loop for value in values nconc
+           ;; convert (x . y) to pos
+           (seq-map
+            (lambda (xy) (igo-xy-to-pos (car xy) (cdr xy) w))
+            ;; expand compose
+            (igo-sgf-expand-compressed-point value w h))))
 
 ;; Game Info Properties
 

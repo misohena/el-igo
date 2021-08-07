@@ -208,20 +208,20 @@ height."
          ;; Grid
          (svg-grid (svg-node svg-game-area 'g :class "grid")))
     ;; Lines
-    (loop for x to (1- w) do
-          (svg-line svg-grid
-                    (* x grid-interval)
-                    (/ line-w -2.0)
-                    (* x grid-interval)
-                    (+ (* (1- h) grid-interval) (/ line-w 2.0))
-                    :stroke "black" :stroke-width line-w))
-    (loop for y to (1- h) do
-          (svg-line svg-grid
-                    (/ line-w -2.0)
-                    (* y grid-interval)
-                    (+ (* (1- w) grid-interval) (/ line-w 2.0))
-                    (* y grid-interval)
-                    :stroke "black" :stroke-width line-w))
+    (cl-loop for x to (1- w) do
+             (svg-line svg-grid
+                       (* x grid-interval)
+                       (/ line-w -2.0)
+                       (* x grid-interval)
+                       (+ (* (1- h) grid-interval) (/ line-w 2.0))
+                       :stroke "black" :stroke-width line-w))
+    (cl-loop for y to (1- h) do
+             (svg-line svg-grid
+                       (/ line-w -2.0)
+                       (* y grid-interval)
+                       (+ (* (1- w) grid-interval) (/ line-w 2.0))
+                       (* y grid-interval)
+                       :stroke "black" :stroke-width line-w))
     ;; Stars
     (when (and (= (logand w 1) 1) (= (logand h 1) 1))
       (svg-circle svg-grid (* grid-interval (/ (1- w) 2.0)) (* grid-interval (/ (1- h) 2.0)) star-radius))
@@ -281,14 +281,14 @@ height."
 (defun igo-svg-move-number-id (x y) (format "mvnum-%s-%s" x y))
 
 (defun igo-svg-stones (svg board grid-interval)
-  (loop for pos to (1- (igo-board-intersection-count board)) do
-        (let ((x (igo-board-pos-to-x board pos))
-              (y (igo-board-pos-to-y board pos)))
-          (if (igo-board-empty-p-at board pos)
-              (progn
-                (svg-remove svg (igo-svg-stone-id x y))
-                (svg-remove svg (igo-svg-shadow-id x y)))
-            (igo-svg-stone svg x y (igo-board-get-at board pos) grid-interval)))))
+  (cl-loop for pos to (1- (igo-board-intersection-count board)) do
+           (let ((x (igo-board-pos-to-x board pos))
+                 (y (igo-board-pos-to-y board pos)))
+             (if (igo-board-empty-p-at board pos)
+                 (progn
+                   (svg-remove svg (igo-svg-stone-id x y))
+                   (svg-remove svg (igo-svg-shadow-id x y)))
+               (igo-svg-stone svg x y (igo-board-get-at board pos) grid-interval)))))
 
 ;; Text
 
