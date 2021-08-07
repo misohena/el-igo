@@ -2455,7 +2455,7 @@
      :font-size igo-ui-font-h
      :text-anchor "middle")
     ;; Advance POS
-    (incf (car pos) (+ btn-w igo-ui-button-margin-h))
+    (cl-incf (car pos) (+ btn-w igo-ui-button-margin-h))
     ;; Add clickable area to map property of Image Descriptor
     (igo-ui-push-clickable-rect image-input-map id btn-x btn-y btn-w btn-h image-scale)))
 
