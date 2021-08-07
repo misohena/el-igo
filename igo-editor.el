@@ -293,6 +293,8 @@
     (define-key km "N" #'igo-editor-edit-move-number)
     (define-key km "g" #'igo-editor-edit-game-info)
     (define-key km (kbd "C-c i") #'igo-editor-init-board)
+    ;; export
+    (define-key km (kbd "x i") #'igo-editor-export-image)
     ;; menu
     (define-key km [igo-editor-menu mouse-1] #'igo-editor-main-menu)
     km))
@@ -397,6 +399,8 @@
            (sep-4 menu-item "--")
            (igo-editor-text-mode menu-item "Text Mode" igo-editor-text-mode)
            (sep-5 menu-item "--")
+           (igo-editor-export-image menu-item "Export Image" igo-editor-export-image)
+           (sep-6 menu-item "--")
            (igo-editor-quit menu-item "Quit" igo-editor-quit)
             ))
 
@@ -1058,6 +1062,99 @@
               :x (car xy)
               :y (cdr xy)
               :editor editor))))
+
+;; Editor - Export Image
+
+(defun igo-editor-y-or-n-p (prompt default)
+  (catch 'select-default
+    (let ((y-or-n-p-map (let ((km (make-composed-keymap y-or-n-p-map)))
+                          (define-key km [remap exit]
+                            (lambda ()
+                              (interactive)
+                              (throw 'select-default default)))
+                          km)))
+      (y-or-n-p (format "%s (default %c)" prompt (if default ?Y ?N))))))
+
+(defun igo-editor-create-svg-text (editor layout)
+  "Return the SVG text that represents the current board."
+  (if-let ((game (igo-editor-game editor)))
+      (let ((svg (igo-editor-create-svg
+                  (igo-editor-layout-image-w layout)
+                  (igo-editor-layout-image-h layout)
+                  layout
+                  nil)))
+        (igo-editor-update-svg svg layout nil game editor)
+        (with-temp-buffer
+          (svg-print svg)
+          (buffer-string)))))
+
+(defun igo-editor-export-image (&optional editor)
+  (interactive)
+  ;; output board svg
+  ;; layout
+  ;;   grid-interval
+  ;;   status-bar-p
+  ;; gzip
+  ;; data uri
+  ;; file or buffer
+  (let* ((editor (or editor
+                     (igo-editor-at-input)
+                     (error "There is no editor at this point.")))
+         (layout (igo-editor-layout-create
+                  1.0
+                  (igo-board-view
+                   (igo-editor-board editor)
+                   (let ((interval
+                          (read-number
+                           "grid-interval(0:same as current board): "
+                           (or (igo-editor-get-property editor :grid-interval)
+                               0))))
+                     (if (<= interval 0) nil interval)))
+                  (igo-editor-y-or-n-p
+                   "Include status bar?"
+                   nil);; (igo-editor-get-property editor :show-status-bar))
+                  nil))
+         (gzip-p (igo-editor-y-or-n-p "Compress by gzip?" nil))
+         (data-uri-p (igo-editor-y-or-n-p "Output data URI?" nil))
+         (filename (if data-uri-p "" (read-file-name
+                                      "File name(If empty, display temporary buffer): " nil
+                                      ""))))
+
+    (if-let ((editor (or editor (igo-editor-at-input)))
+             (game (igo-editor-game editor)))
+        (let* ((svg-text (igo-editor-create-svg-text editor layout))
+               (output-text
+                (with-temp-buffer
+                  (insert svg-text)
+                  ;; compress by gzip
+                  (when gzip-p
+                    (let ((coding-system-for-read 'no-conversion)
+	                  (coding-system-for-write 'no-conversion))
+                      (shell-command-on-region (point-min) (point-max) "gzip" nil t)))
+                  ;; convert to base64 data URI
+                  (when data-uri-p
+                    (base64-encode-region (point-min) (point-max))
+                    (goto-char (point-min))
+                    (insert "data:image/svg+xml;base64,")
+                    (while (search-forward "\n" nil t)
+                      (replace-match "")))
+                  (buffer-string))))
+          ;; output file or buffer
+          (cond
+           ((and filename (not (string-empty-p filename)))
+            (when (or (not (file-exists-p filename))
+                      (y-or-n-p (format "The file %s already exists, overwrite it?" filename)))
+              (with-temp-file filename
+                (set-buffer-file-coding-system 'no-conversion)
+                (insert output-text))
+              (message "Wrote %s" filename)))
+           (t
+            (display-buffer
+             (let ((output-buffer (get-buffer-create "*IGO SVG Image*")))
+               (with-current-buffer output-buffer
+                 (erase-buffer)
+                 (insert output-text))
+               output-buffer))))))))
 
 ;; Editor - Destroy
 
