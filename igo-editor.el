@@ -631,7 +631,7 @@
   0)
 (defun igo-editor-layout-board-top (layout)
   (if (igo-editor-layout-status-bar-p layout)
-      igo-ui-bar-h 0))
+      (igo-ui-bar-h) 0))
 (defun igo-editor-layout-main-bar-top (layout)
   (+ (igo-editor-layout-board-top layout)
      (igo-editor-layout-board-h layout)))
@@ -645,7 +645,7 @@
    (* (igo-editor-layout-image-scale layout)
       (+ (igo-editor-layout-main-bar-top layout)
          (if (igo-editor-layout-main-bar-p layout)
-             igo-ui-bar-h 0)))))
+             (igo-ui-bar-h) 0)))))
 
 (defun igo-editor-main-bar-top (editor)
   (igo-editor-layout-main-bar-top (igo-editor-layout editor)))
@@ -840,16 +840,16 @@
                                  "status-bar")))
     (svg-circle
      bar
-     (- bar-w (/ igo-ui-bar-h 2))
-     (/ igo-ui-bar-h 2)
-     (/ (* 3 igo-ui-bar-h) 10)
+     (- bar-w (/ (igo-ui-bar-h) 2))
+     (/ (igo-ui-bar-h) 2)
+     (/ (* 3 (igo-ui-bar-h)) 10)
      :gradient "stone-black"
      :id "status-stone-b")
     (svg-circle
      bar
-     (/ igo-ui-bar-h 2)
-     (/ igo-ui-bar-h 2)
-     (/ (* 3 igo-ui-bar-h) 10)
+     (/ (igo-ui-bar-h) 2)
+     (/ (igo-ui-bar-h) 2)
+     (/ (* 3 (igo-ui-bar-h)) 10)
      :gradient "stone-white"
      :id "status-stone-w")
     ))
@@ -860,25 +860,25 @@
       (let* ((bar-w (igo-editor-layout-bar-w layout))
              (bar-y 0)
              (turn-line-h 4)
-             (text-y (+ bar-y (/ (- igo-ui-bar-h igo-ui-font-h) 2) igo-ui-font-ascent))
+             (text-y (+ bar-y (/ (- (igo-ui-bar-h) (igo-ui-font-h)) 2) (igo-ui-font-ascent)))
              (w-prisoners (igo-game-get-prisoners game 'white))
              (b-prisoners (igo-game-get-prisoners game 'black)))
         ;; Turn
         (svg-rectangle
          bar
          (if (igo-black-p (igo-game-turn game)) ;;not next-move-color
-             (- bar-w igo-ui-bar-h)
+             (- bar-w (igo-ui-bar-h))
            0)
-         (+ bar-y (- igo-ui-bar-h turn-line-h))
-         igo-ui-bar-h turn-line-h :fill "#f00" :id "status-turn")
+         (+ bar-y (- (igo-ui-bar-h) turn-line-h))
+         (igo-ui-bar-h) turn-line-h :fill "#f00" :id "status-turn")
         ;; Prisoners(Captured Stones)
         (if (> b-prisoners 0)
             (svg-text
              bar
              (number-to-string b-prisoners)
-             :x (+ igo-ui-bar-h (/ igo-ui-bar-h 8))
+             :x (+ (igo-ui-bar-h) (/ (igo-ui-bar-h) 8))
              :y text-y
-             :font-family igo-ui-font-family :font-size igo-ui-font-h
+             :font-family (igo-ui-font-family) :font-size (igo-ui-font-h)
              :text-anchor "start" :fill "#fff" :id "status-prisoners-w")
           (let ((n (car (dom-by-id bar "status-prisoners-w"))))
             (if n (dom-remove-node bar n))))
@@ -886,9 +886,9 @@
             (svg-text
              bar
              (number-to-string w-prisoners)
-             :x (- bar-w igo-ui-bar-h (/ igo-ui-bar-h 8))
+             :x (- bar-w (igo-ui-bar-h) (/ (igo-ui-bar-h) 8))
              :y text-y
-             :font-family igo-ui-font-family :font-size igo-ui-font-h
+             :font-family (igo-ui-font-family) :font-size (igo-ui-font-h)
              :text-anchor "end" :fill "#fff" :id "status-prisoners-b")
           (let ((n (car (dom-by-id bar "status-prisoners-b"))))
             (if n (dom-remove-node bar n))))
@@ -898,7 +898,7 @@
          (number-to-string (1+ (igo-node-move-number (igo-game-current-node game))))
          :x (/ bar-w 2)
          :y text-y
-         :font-family igo-ui-font-family :font-size igo-ui-font-h
+         :font-family (igo-ui-font-family) :font-size (igo-ui-font-h)
          :text-anchor "middle" :fill "#fff" :id "status-move-number")
         ))))
 
@@ -1433,7 +1433,7 @@ turn(igo-game-turn) if illegal move is allowed."
       (let* ((bar-y (igo-editor-main-bar-top editor))
              (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-bar-pixel-w editor)
                                      "main-bar"))
-             (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
+             (pos (cons (igo-ui-bar-padding-h) (+ bar-y (igo-ui-bar-padding-v)))))
         (igo-ui-create-button bar 'igo-editor-menu pos "Menu" image-input-map image-scale)
         (igo-ui-create-button bar 'igo-editor-first pos "|<" image-input-map image-scale)
         (igo-ui-create-button bar 'igo-editor-previous pos " <" image-input-map image-scale)
@@ -1760,7 +1760,7 @@ turn(igo-game-turn) if illegal move is allowed."
       (let* ((bar-y (igo-editor-main-bar-top editor))
              (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-bar-pixel-w editor)
                                      "main-bar"))
-             (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
+             (pos (cons (igo-ui-bar-padding-h) (+ bar-y (igo-ui-bar-padding-v)))))
         (igo-ui-create-button bar 'igo-editor-free-edit-quit pos "Quit" image-input-map image-scale)
         (igo-ui-create-button bar 'igo-editor-free-edit-black pos "Black" image-input-map image-scale)
         (igo-ui-create-button bar 'igo-editor-free-edit-white pos "White" image-input-map image-scale)
@@ -1980,7 +1980,7 @@ turn(igo-game-turn) if illegal move is allowed."
       (let* ((bar-y (igo-editor-main-bar-top editor))
              (bar (igo-ui-create-bar svg 0 bar-y (igo-editor-bar-pixel-w editor)
                                      "main-bar"))
-             (pos (cons igo-ui-bar-padding-h (+ bar-y igo-ui-bar-padding-v))))
+             (pos (cons (igo-ui-bar-padding-h) (+ bar-y (igo-ui-bar-padding-v)))))
         (igo-ui-create-button bar 'igo-editor-mark-edit-quit pos "Quit" image-input-map image-scale)
         (igo-ui-create-button bar 'igo-editor-mark-edit-cross pos "X" image-input-map image-scale)
         (igo-ui-create-button bar 'igo-editor-mark-edit-circle pos "O" image-input-map image-scale)
@@ -2426,6 +2426,14 @@ turn(igo-game-turn) if illegal move is allowed."
                         igo-ui-font-h))
 (defvar igo-ui-bar-padding-v 4)
 (defvar igo-ui-bar-padding-h 4)
+
+(defun igo-ui-font-family () igo-ui-font-family)
+(defun igo-ui-font-h () igo-ui-font-h)
+(defun igo-ui-font-ascent () igo-ui-font-ascent)
+(defun igo-ui-bar-h () igo-ui-bar-h)
+(defun igo-ui-bar-padding-v () igo-ui-bar-padding-v)
+(defun igo-ui-bar-padding-h () igo-ui-bar-padding-h)
+
 
 (defun igo-ui-text-width (text)
   (/ (* igo-ui-font-h (string-width text)) 2))
