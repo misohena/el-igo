@@ -2462,7 +2462,8 @@ turn(igo-game-turn) if illegal move is allowed."
      :y (+ igo-ui-button-padding-v igo-ui-font-ascent)
      :font-family igo-ui-font-family
      :font-size igo-ui-font-h
-     :text-anchor "middle")
+     :text-anchor "middle"
+     :fill "#000")
     ;; Advance POS
     (cl-incf (car pos) (+ btn-w igo-ui-button-margin-h))
     ;; Add clickable area to map property of Image Descriptor
