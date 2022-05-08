@@ -1314,7 +1314,8 @@
   (if update-image (igo-editor-update-image editor)))
 
 (defun igo-editor-next-move-color (editor)
-  "Return next move's color. This can be different from the current turn(igo-game-turn) if illegal move is allowed."
+  "Return next move's color. This can be different from the current
+turn(igo-game-turn) if illegal move is allowed."
   (let* ((editor (or editor (igo-editor-at-input)))
          (game (if editor (igo-editor-game editor))))
     (if (and game
@@ -2498,7 +2499,8 @@
   image-input-map)
 
 (defun igo-ui-remove-clickable-areas-under (image-input-map dom-node)
-  "Remove all clickable areas from IMAGE-INPUT-MAP that matches the id of children of DOM-NODE."
+  "Remove all clickable areas from IMAGE-INPUT-MAP that matches the
+id of children of DOM-NODE."
   ;;@todo all children? all descendants?
   (dolist (child (dom-children dom-node))
     (let ((child-id (dom-attr child 'id)))

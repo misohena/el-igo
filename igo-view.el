@@ -554,7 +554,8 @@ height."
 ;;
 
 (defun igo--svg-gradient (svg id type stops &rest args)
-  "Instead of svg-gradient. svg-gradient not support additional attributes(cx, cy, fx, fy, r, etc...)"
+  "Instead of svg-gradient. svg-gradient not support additional
+attributes(cx, cy, fx, fy, r, etc...)"
   (svg--def
    svg
    (apply

@@ -520,7 +520,8 @@
 ;; Board Changes - Intersection State
 
 (defun igo--find-previous-of (pred elements)
-  "Return the cell before the first element in ELEMENTS where (PRED element) is non-nil."
+  "Return the cell before the first element in ELEMENTS where (PRED
+element) is non-nil."
   (let (prev-cell)
     (while (and elements (not (funcall pred (car elements))))
       (setq prev-cell elements)
@@ -528,7 +529,8 @@
     prev-cell))
 
 (defun igo-board-changes-get-at (changes pos)
-  "Return the changed state('black, 'white, 'empty) of the intersection specified by POS."
+  "Return the changed state('black, 'white, 'empty) of the
+intersection specified by POS."
   (when changes
     (cond
      ((member pos (igo-board-changes-black changes)) 'black)
@@ -811,7 +813,8 @@
     (if prev (eq (car (last (igo-node-next-nodes prev))) node))))
 
 (defun igo-node-move-number (node)
-  "Return the depth of NODE from the root node or previous MN property, not include setup node."
+  "Return the depth of NODE from the root node or previous MN
+property, not include setup node."
   (let ((num 0) mn-prop)
     (while (and node (null (setq mn-prop (igo-node-get-move-number-property node))))
       (if (igo-node-move-p node)
@@ -1376,7 +1379,8 @@
   (aset game igo-game--idx-current-node next-node))
 
 (defun igo-game-pop-node (game)
-  "Set current node to previsous node. Return current node before function was called."
+  "Set current node to previsous node. Return current node before
+function was called."
   (let ((curr-node (igo-game-current-node game)))
     (if (not (igo-node-root-p curr-node))
         (progn

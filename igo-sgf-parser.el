@@ -130,7 +130,8 @@
     (nreverse trees)))
 
 (defun igo-sgf-parse-tree (strm &optional leading-wss)
-  "Parse GameTree and return a tree object [leading-wss begin-pos nodes subtrees end-pos]."
+  "Parse GameTree and return a tree object [leading-wss begin-pos
+nodes subtrees end-pos]."
 
   (setq leading-wss (concat leading-wss (igo-sgf-skip-ws strm)))
 
@@ -481,7 +482,10 @@ ex:
         (nreverse points)))))
 
 (defun igo-sgf-values-as-point-pos-list (values w h)
-  "ex: (igo-sgf-values-as-point-pos-list (mapcar (lambda (v) (igo-sgf-make-prop-value \"\" nil v nil)) '(\"aa\" \"ba\" \"ab\" \"ca:da\")) 9 9) => (0 1 9 2 3)"
+  "ex: (igo-sgf-values-as-point-pos-list
+ (mapcar
+  (lambda (v) (igo-sgf-make-prop-value \"\" nil v nil))
+  '(\"aa\" \"ba\" \"ab\" \"ca:da\")) 9 9) => (0 1 9 2 3)"
   (cl-loop for value in values nconc
            ;; convert (x . y) to pos
            (seq-map

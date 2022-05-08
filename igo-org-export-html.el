@@ -465,7 +465,8 @@ Then export as HTML.
 ;; 2. Type C-c C-e g in org-mode
 
 (defun igo-org-define-html-backend (&optional add-to-menu-p)
-  "Define a backend that transforms igo special blocks, derived from the HTML backend."
+  "Define a backend that transforms igo special blocks, derived
+from the HTML backend."
   (apply #'org-export-define-derived-backend
          'igo-html 'html
          :filters-alist '((:filter-parse-tree . igo-org-html-filter-parse-tree))

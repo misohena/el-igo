@@ -106,7 +106,9 @@
     ret-val))
 
 (defun igo-org-fontify-igo-block (limit)
-  "Fontify #+begin_igo block. Call after org-fontify-meta-lines-and-blocks-1. Overwrite text property between #+begin_igo and #+end_igo."
+  "Fontify #+begin_igo block. Call after
+org-fontify-meta-lines-and-blocks-1. Overwrite text property
+between #+begin_igo and #+end_igo."
 
   ;; The following code is derived from org-fontify-meta-lines-and-blocks-1
   (let ((case-fold-search t))
