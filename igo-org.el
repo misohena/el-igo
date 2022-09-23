@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'org)
 (require 'igo-editor)
 
 (defface igo-org-error-face
@@ -40,6 +41,14 @@
   (with-eval-after-load "org"
     (add-hook 'org-mode-hook #'igo-org-startup)
     (igo-org-hook-fontify-block)))
+
+
+;;
+;; Variables
+;;
+
+(defvar-local igo-org-block-defaults nil)
+
 
 ;;
 ;; Hook Fontify
@@ -230,8 +239,6 @@ between #+begin_igo and #+end_igo."
    (igo-org-opt-value key options default-value)))
 
 ;; #+IGO_BLOCK_DEFAULTS: <properties>
-
-(defvar-local igo-org-block-defaults nil)
 
 (defun igo-org-startup ()
   (if-let ((block-defaults-str (igo-org-get-buffer-option "igo_block_defaults")))
