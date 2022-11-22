@@ -109,9 +109,10 @@
          (ret-val (funcall old-func limit)))
     (if ret-val
         ;; Overwrite between #+begin_igo and #+end_igo if exists
-        (save-excursion
-          (goto-char p)
-          (igo-org-fontify-igo-block limit)))
+        (save-match-data
+          (save-excursion
+            (goto-char p)
+            (igo-org-fontify-igo-block limit))))
     ret-val))
 
 (defun igo-org-fontify-igo-block (limit)
@@ -122,12 +123,12 @@ between #+begin_igo and #+end_igo."
   ;; The following code is derived from org-fontify-meta-lines-and-blocks-1
   (let ((case-fold-search t))
     (when (re-search-forward
-	   (rx bol (group (zero-or-more blank) "#"
+	   (rx bol (group (zero-or-more (any " \t")) "#"
 			  (group (group (or (seq "+" (one-or-more (any "a-zA-Z")) (optional ":"))
-					    space
+					    (any " \t")
 					    eol))
 				 (optional (group "_" (group (one-or-more (any "a-zA-Z"))))))
-			  (zero-or-more blank)
+			  (zero-or-more (any " \t"))
                           ;; options
 			  (group (zero-or-more any))))
 	   limit t)
