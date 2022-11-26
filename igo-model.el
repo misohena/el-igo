@@ -703,22 +703,70 @@ intersection specified by POS."
 (defun igo-node-next-nodes (node) (aref node igo-node--idx-next-nodes))
 (defun igo-node-last-visited (node) (aref node igo-node--idx-last-visited))
 
-(defun igo-node-clone (node &optional new-prev)
-  (let ((new-node (igo-node new-prev
-                            (igo-node-move node)
-                            (igo-node-color node))))
-    ;; clone properties
-    (aset new-node igo-node--idx-properties
-          (igo-node-clone-properties (igo-node-properties node)))
-    ;; clone next-nodes
-    (aset new-node igo-node--idx-next-nodes
-          (igo-node-clone-next-nodes (igo-node-next-nodes node) new-node))
-    ;; clone last-visited
-    (if-let ((index (seq-position (igo-node-next-nodes node)
-                                  (igo-node-last-visited node) #'eq)))
-        (aset new-node igo-node--idx-last-visited
-              (nth index (igo-node-next-nodes new-node))))
-    new-node))
+(defun igo-node-clone-new-frame (old-node new-prev)
+  (list
+   nil ;;0:new-next-nodes
+   old-node ;;1:old-node
+   (igo-node new-prev
+             (igo-node-move old-node)
+             (igo-node-color old-node));;2:new-node
+   (igo-node-next-nodes old-node) ;;3:old-next-nodes
+   ))
+
+(defun igo-node-clone (top-node &optional top-new-prev)
+  (let ((stack (list (igo-node-clone-new-frame top-node top-new-prev)))
+        result)
+
+    (while stack
+      (let* ((frame (car stack))
+             (new-next-nodes (nth 0 frame))
+             (old-node (nth 1 frame))
+             (new-node (nth 2 frame)))
+        (cl-symbol-macrolet ((old-next-nodes (nth 3 frame)))
+          (if old-next-nodes
+              ;; Clone sub-nodes
+              (push (igo-node-clone-new-frame (pop old-next-nodes) new-node) stack)
+
+            ;; Set subnodes
+            (aset new-node igo-node--idx-next-nodes
+                  (nreverse new-next-nodes))
+            ;; Clone last-visited
+            (when-let ((index (seq-position (igo-node-next-nodes old-node)
+                                            (igo-node-last-visited old-node) #'eq)))
+              (aset new-node igo-node--idx-last-visited
+                    (nth index (igo-node-next-nodes new-node))))
+            ;; Clone properties
+            (aset new-node igo-node--idx-properties
+                  (igo-node-clone-properties (igo-node-properties old-node)))
+            ;; Return a new node
+            (pop stack)
+            (if stack
+                (push new-node (nth 0 (car stack))) ;;callee's new-next-nodes
+              (setq result new-node))))))
+    result))
+
+;; 再帰版 (max-lisp-eval-depth制限に引っかかる)
+;; (defun igo-node-clone (node &optional new-prev)
+;;   (let ((new-node (igo-node new-prev
+;;                             (igo-node-move node)
+;;                             (igo-node-color node))))
+;;     ;; clone properties
+;;     (aset new-node igo-node--idx-properties
+;;           (igo-node-clone-properties (igo-node-properties node)))
+;;     ;; clone next-nodes
+;;     (aset new-node igo-node--idx-next-nodes
+;;           (igo-node-clone-next-nodes (igo-node-next-nodes node) new-node))
+;;     ;; clone last-visited
+;;     (if-let ((index (seq-position (igo-node-next-nodes node)
+;;                                   (igo-node-last-visited node) #'eq)))
+;;         (aset new-node igo-node--idx-last-visited
+;;               (nth index (igo-node-next-nodes new-node))))
+;;     new-node))
+;;
+;; (defun igo-node-clone-next-nodes (next-nodes new-prev)
+;;   (mapcar (lambda (next)
+;;             (igo-node-clone next new-prev))
+;;           next-nodes))
 
 (defun igo-node-clone-properties (props)
   ;; Copy properties
@@ -728,10 +776,6 @@ intersection specified by POS."
   ;; - igo-board-changes (vector)
   (copy-tree props))
 
-(defun igo-node-clone-next-nodes (next-nodes new-prev)
-  (mapcar (lambda (next)
-            (igo-node-clone next new-prev))
-          next-nodes))
 
 ;; Node - Node Type(Setup or Move(Resign, Pass, Placement))
 
