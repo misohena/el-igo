@@ -1730,92 +1730,109 @@ ex: pos-list=(0 1 3 4 9 10), w=9 => ( ((0 . 0) . (1 . 1)) ((3 . 0) . (4 . 0)) )"
           (lambda (r1 r2) (< (igo-xy-to-pos (caar r1) (cdar r1) w)
                              (igo-xy-to-pos (caar r2) (cdar r2) w))))))
 
-(defun igo-sgf-string-from-game-tree (node w h)
-  (let ((sgf-tree-p (or (igo-node-root-p node) ;; is root
-                        (> (igo-node-number-of-siblings node) 1)))) ;;has siblings
+(defun igo-sgf-stringify-node-contents (node w h)
+  (concat
+   ";"
 
-    (concat
-     (if sgf-tree-p "(")
-     ";"
+   ;; Root Properties
+   (if (igo-node-root-p node)
+       (concat "FF[4]GM[1]SZ[" (if (= w h) (number-to-string w) (format "%s:%s" w h)) "]"))
 
-     ;; Root Properties
-     (if (igo-node-root-p node)
-         (concat "FF[4]GM[1]SZ[" (if (= w h) (number-to-string w) (format "%s:%s" w h)) "]"))
+   ;; Move Property
+   (let ((move (igo-node-move node))
+         (color (igo-node-color node)))
+     (cond
+      ((igo-placement-p move) (concat (igo-sgf-color color) "[" (igo-sgf-point move w) "]" ))
+      ((igo-pass-p move) (concat (igo-sgf-color color) "[]"))
+      ((igo-resign-p move) nil))) ;;Ignore
 
-     ;; Move Property
-     (let ((move (igo-node-move node))
-           (color (igo-node-color node)))
-       (cond
-        ((igo-placement-p move) (concat (igo-sgf-color color) "[" (igo-sgf-point move w) "]" ))
-        ((igo-pass-p move) (concat (igo-sgf-color color) "[]"))
-        ((igo-resign-p move) nil))) ;;Ignore
+   ;; Properties
+   ;; (let ((prop (igo-node-properties node)))
+   ;;   (while prop
+   ;;     (let ((key (car prop)) (value (cadr prop)))
+   ;;       (cond
+   ;;        ((eq key ??))))))
 
-     ;; Properties
-     ;; (let ((prop (igo-node-properties node)))
-     ;;   (while prop
-     ;;     (let ((key (car prop)) (value (cadr prop)))
-     ;;       (cond
-     ;;        ((eq key ??))))))
+   ;; Setup Properties
+   (let ((board-change (igo-node-get-setup-property node)))
+     (when board-change
+       (let ((change-black (igo-board-changes-black board-change))
+             (change-white (igo-board-changes-white board-change))
+             (change-empty (igo-board-changes-empty board-change))
+             (change-turn (igo-board-changes-turn board-change)))
 
-     ;; Setup Properties
-     (let ((board-change (igo-node-get-setup-property node)))
-       (when board-change
-         (let ((change-black (igo-board-changes-black board-change))
-               (change-white (igo-board-changes-white board-change))
-               (change-empty (igo-board-changes-empty board-change))
-               (change-turn (igo-board-changes-turn board-change)))
-
-           (concat
-            (if change-black (concat "AB" (igo-sgf-point-list-compressed change-black w)))
-            (if change-white (concat "AW" (igo-sgf-point-list-compressed change-white w)))
-            (if change-empty (concat "AE" (igo-sgf-point-list-compressed change-empty w)))
-            (if change-turn (concat "PL[" (igo-sgf-color change-turn) "]"))))))
-
-     ;; Markup Properties
-     (let ((marks (igo-node-get-marks-property node)))
-       (when marks
          (concat
-          ;; MA CR SQ TR
-          (mapconcat
-           (lambda (type.pid)
-             (let ((values-str
-                    (mapconcat
-                     (lambda (m)
-                       (if (eq (igo-mark-type m) (car type.pid))
-                           (concat "[" (igo-sgf-point (igo-mark-pos m) w) "]")))
-                     marks "")))
-               (if (not (string= values-str ""))
-                   (concat (cdr type.pid) values-str))))
-           '((cross . "MA")
-             (circle . "CR")
-             (square . "SQ")
-             (triangle . "TR"))
-           "")
-          ;; LB
-          (let ((values-str
-                 (mapconcat
-                  (lambda (m)
-                    (if (eq (igo-mark-type m) 'text)
-                        (concat "[" (igo-sgf-point (igo-mark-pos m) w) ":"
-                                (igo-sgf-simple-text (igo-mark-text m) t) "]")))
-                  marks "")))
-            (if (not (string= values-str ""))
-                (concat "LB" values-str)))
-          )))
+          (if change-black (concat "AB" (igo-sgf-point-list-compressed change-black w)))
+          (if change-white (concat "AW" (igo-sgf-point-list-compressed change-white w)))
+          (if change-empty (concat "AE" (igo-sgf-point-list-compressed change-empty w)))
+          (if change-turn (concat "PL[" (igo-sgf-color change-turn) "]"))))))
 
-     ;; Other SGF Properties
-     (let ((props (igo-node-get-sgf-properties node))
-           strs)
-       (while props
-         (let ((key (car props)) (values (cadr props)))
-           (push (concat key (mapconcat (lambda (v) (concat "[" v "]")) values "")) strs))
-         (setq props (cddr props)))
-       (apply #'concat (nreverse strs)))
+   ;; Markup Properties
+   (let ((marks (igo-node-get-marks-property node)))
+     (when marks
+       (concat
+        ;; MA CR SQ TR
+        (mapconcat
+         (lambda (type.pid)
+           (let ((values-str
+                  (mapconcat
+                   (lambda (m)
+                     (if (eq (igo-mark-type m) (car type.pid))
+                         (concat "[" (igo-sgf-point (igo-mark-pos m) w) "]")))
+                   marks "")))
+             (if (not (string= values-str ""))
+                 (concat (cdr type.pid) values-str))))
+         '((cross . "MA")
+           (circle . "CR")
+           (square . "SQ")
+           (triangle . "TR"))
+         "")
+        ;; LB
+        (let ((values-str
+               (mapconcat
+                (lambda (m)
+                  (if (eq (igo-mark-type m) 'text)
+                      (concat "[" (igo-sgf-point (igo-mark-pos m) w) ":"
+                              (igo-sgf-simple-text (igo-mark-text m) t) "]")))
+                marks "")))
+          (if (not (string= values-str ""))
+              (concat "LB" values-str)))
+        )))
 
-     ;; Sub-Nodes
-     (cl-loop for subnode in (igo-node-next-nodes node) concat
-              (igo-sgf-string-from-game-tree subnode w h))
-     (if sgf-tree-p ")"))))
+   ;; Other SGF Properties
+   (let ((props (igo-node-get-sgf-properties node))
+         strs)
+     (while props
+       (let ((key (car props)) (values (cadr props)))
+         (push (concat key (mapconcat (lambda (v) (concat "[" v "]")) values "")) strs))
+       (setq props (cddr props)))
+     (apply #'concat (nreverse strs)))))
+
+(defun igo-sgf-string-from-game-tree (top-node w h)
+  ;; 再帰を使うと max-lisp-eval-depth 制限に引っかかる。
+  ;; (バイトコンパイルすればひっかからない)
+  (let ((node-stack (list top-node))
+        result)
+    (while node-stack
+      (let ((node (pop node-stack)))
+        (cond
+
+         ((stringp node)
+          (setq result (concat result node)))
+
+         (node
+          (when (or (igo-node-root-p node) ;; is root
+                    (> (igo-node-number-of-siblings node) 1)) ;;has siblings
+            (setq result (concat result "("))
+            (push ")" node-stack))
+
+          ;; Node contents
+          (setq result (concat result (igo-sgf-stringify-node-contents node w h)))
+
+          ;; Sub-Nodes
+          (setq node-stack
+                (append (igo-node-next-nodes node) node-stack))))))
+    result))
 
 
 (provide 'igo-model)
