@@ -33,6 +33,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'igo-sgf-parser)
 
 (defgroup el-igo nil

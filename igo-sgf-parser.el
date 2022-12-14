@@ -24,6 +24,9 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+(require 'subr-x)
+
 ;;
 ;; Input Stream Functions:
 ;;
