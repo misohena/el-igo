@@ -25,7 +25,20 @@
 ;;; Code:
 
 (require 'org)
-(require 'igo-editor)
+
+;;(require 'igo-editor)
+(autoload 'igo-editor "igo-editor")
+(declare-function igo-editor-set-region "igo-editor")
+(declare-function igo-editor-update "igo-editor")
+(declare-function igo-editor-last-error "igo-editor")
+(declare-function igo-editor-last-error-begin "igo-editor")
+(declare-function igo-editor-last-error-end "igo-editor")
+(declare-function igo-editor-set-status-bar-visible "igo-editor")
+(declare-function igo-editor-set-move-number-visible "igo-editor")
+(declare-function igo-editor-set-branch-text-visible "igo-editor")
+(declare-function igo-editor-set-editable "igo-editor")
+(declare-function igo-editor-find-by-queries "igo-editor")
+(declare-function igo-editor-set-grid-interval "igo-editor")
 
 (defface igo-org-error-face
   '((((supports :underline (:style wave)))
