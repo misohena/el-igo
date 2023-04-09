@@ -28,7 +28,9 @@
 
 ;;; Code:
 
+(require 'svg)
 (require 'igo-org)
+(require 'igo-view)
 (require 'ox-html)
 
 (defcustom igo-org-js-path
@@ -344,10 +346,14 @@ Modify all igo special blocks in the DATA tree."
    (igo-org-get-special-block-header special-block) t))
 
 (defun igo-org-make-options-for-js_igo (options)
+  (defvar igo-editor-status-bar-visible) ;;igo-editor.el
   (let ((json
          (concat
           "\"ui\": {\"top\":["
-          (if (igo-org-opt-bool-value :status-bar options igo-editor-status-bar-visible)
+          (if (igo-org-opt-bool-value :status-bar options
+                                      (and (boundp
+                                            'igo-editor-status-bar-visible)
+                                           igo-editor-status-bar-visible))
               "\"GameStatus\"")
           "], \"bottom\":[[\"UndoAll\",\"Undo\",\"Redo\",\"RedoAll\",\"Pass\",\"Menu\"], \"ViewControl\", \"Comment\"]},"
           (if (igo-org-opt-bool-value :move-number options)
