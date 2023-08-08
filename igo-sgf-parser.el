@@ -358,7 +358,7 @@ nodes subtrees end-pos]."
 (pv \"AB\\:):CD\") => ((pv \"AB:)\") . (pv \"CD\"))
 (pv \"AB:CD:EF\") => error
 
-NOTE: (pv str)=(igo-sgf-make-prop-value "" nil str nil)
+NOTE: (pv str)=(igo-sgf-make-prop-value \"\" nil str nil)
 "
   (let* ((value-str (igo-sgf-prop-value-content value))
          (value-length (length value-str))
@@ -433,7 +433,8 @@ NOTE: (pv str)=(igo-sgf-make-prop-value "" nil str nil)
 (defun igo-sgf-value-as-point-xy (value &optional w h)
   "Convert point type(same as move type) value to (x . y).
 
-ex: (igo-sgf-value-as-point-xy (igo-sgf-make-prop-value "" nil \"da\" nil)) => (3 . 0)"
+ex: (igo-sgf-value-as-point-xy (igo-sgf-make-prop-value \"\" nil \"da\" nil))
+     => (3 . 0)"
   (let ((value-str (igo-sgf-prop-value-content value)))
     (if (/= (length value-str) 2)
         (error "%sPoint value is not two letters." (igo-sgf-prop-value-location-string value)))
@@ -446,8 +447,8 @@ ex: (igo-sgf-value-as-point-xy (igo-sgf-make-prop-value "" nil \"da\" nil)) => (
 (defun igo-sgf-expand-compressed-point (value &optional w h)
   "https://www.red-bean.com/sgf/sgf4.html#3.5.1
 ex:
-(igo-sgf-expand-compressed-point (igo-sgf-make-prop-value "" nil \"jk\" nil)) => ((9 . 10))
-(igo-sgf-expand-compressed-point (igo-sgf-make-prop-value "" nil \"jk:lm\" nil) => ((9 . 10) (10 . 10) (11 . 10) (9 . 11) (10 . 11) (11 . 11) (9 . 12) (10 . 12) (11 . 12))
+(igo-sgf-expand-compressed-point (igo-sgf-make-prop-value \"\" nil \"jk\" nil)) => ((9 . 10))
+(igo-sgf-expand-compressed-point (igo-sgf-make-prop-value \"\" nil \"jk:lm\" nil) => ((9 . 10) (10 . 10) (11 . 10) (9 . 11) (10 . 11) (11 . 11) (9 . 12) (10 . 12) (11 . 12))
 "
   ;;(if (vectorp value) (setq value (igo-sgf-prop-value-content value)))
 
