@@ -532,7 +532,7 @@ element) is non-nil."
     prev-cell))
 
 (defun igo-board-changes-get-at (changes pos)
-  "Return the changed state('black, 'white, 'empty) of the
+  "Return the changed state(\\='black, \\='white, \\='empty) of the
 intersection specified by POS."
   (when changes
     (cond
@@ -1525,7 +1525,7 @@ function was called."
   "ex: (igo-sgf-values-as-point-pos-list
  (mapcar
   (lambda (v) (igo-sgf-make-prop-value \"\" nil v nil))
-  '(\"aa\" \"ba\" \"ab\" \"ca:da\")) 9 9) => (0 1 9 2 3)"
+  \\='(\"aa\" \"ba\" \"ab\" \"ca:da\")) 9 9) => (0 1 9 2 3)"
   (cl-loop for value in values nconc
            ;; convert (x . y) to pos
            (seq-map
