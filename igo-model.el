@@ -1234,10 +1234,11 @@ property, not include setup node."
   (igo-node-set-property
    node
    :sgf-properties
-   (lax-plist-put (igo-node-get-sgf-properties node) prop-id-str prop-values)))
+   (plist-put (igo-node-get-sgf-properties node) prop-id-str prop-values
+              #'equal)))
 
 (defun igo-node-get-sgf-property (node prop-id-str)
-  (lax-plist-get (igo-node-get-sgf-properties node) prop-id-str))
+  (plist-get (igo-node-get-sgf-properties node) prop-id-str #'equal))
 
 (defun igo-node-delete-sgf-property (node prop-id-str)
   (let ((props (igo-node-get-sgf-properties node))
