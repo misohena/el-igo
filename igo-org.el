@@ -143,13 +143,13 @@ between #+begin_igo and #+end_igo."
 				 (optional (group "_" (group (one-or-more (any "a-zA-Z"))))))
 			  (zero-or-more (any " \t"))
                           ;; options
-			  (group (zero-or-more any))))
+			  (group (zero-or-more nonl))))
 	   limit t)
       (let ((block-start (match-end 0))  ; includes the \n at end of #+begin line
 	    (block-end nil)              ; will include \n after end of block content
 	    (dc3 (downcase (match-string 3)))
             (options (match-string 6))
-	     block-type)
+	    block-type)
 	(cond
 	 ((and (match-end 4) (equal dc3 "+begin"))
 	  ;; Truly a block
