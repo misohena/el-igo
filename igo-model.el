@@ -732,8 +732,9 @@ intersection specified by POS."
             (aset new-node igo-node--idx-next-nodes
                   (nreverse new-next-nodes))
             ;; Clone last-visited
-            (when-let ((index (seq-position (igo-node-next-nodes old-node)
-                                            (igo-node-last-visited old-node) #'eq)))
+            (when-let* ((index (seq-position (igo-node-next-nodes old-node)
+                                             (igo-node-last-visited old-node)
+                                             #'eq)))
               (aset new-node igo-node--idx-last-visited
                     (nth index (igo-node-next-nodes new-node))))
             ;; Clone properties
@@ -758,8 +759,8 @@ intersection specified by POS."
 ;;     (aset new-node igo-node--idx-next-nodes
 ;;           (igo-node-clone-next-nodes (igo-node-next-nodes node) new-node))
 ;;     ;; clone last-visited
-;;     (if-let ((index (seq-position (igo-node-next-nodes node)
-;;                                   (igo-node-last-visited node) #'eq)))
+;;     (if-let* ((index (seq-position (igo-node-next-nodes node)
+;;                                    (igo-node-last-visited node) #'eq)))
 ;;         (aset new-node igo-node--idx-last-visited
 ;;               (nth index (igo-node-next-nodes new-node))))
 ;;     new-node))
@@ -886,7 +887,7 @@ property, not include setup node."
                    ;; opposite color or PL property
                    (if (igo-node-move-p node)
                        (igo-opposite-color (igo-node-color node))
-                     (if-let ((changes (igo-node-get-setup-property node)))
+                     (if-let* ((changes (igo-node-get-setup-property node)))
                          (igo-board-changes-turn changes))))))
       (setq node (igo-node-prev node)))
     (or result 'black)))

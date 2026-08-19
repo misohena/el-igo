@@ -255,7 +255,7 @@ between #+begin_igo and #+end_igo."
 ;; #+IGO_BLOCK_DEFAULTS: <properties>
 
 (defun igo-org-startup ()
-  (if-let ((block-defaults-str (igo-org-get-buffer-option "igo_block_defaults")))
+  (if-let* ((block-defaults-str (igo-org-get-buffer-option "igo_block_defaults")))
       (setq igo-org-block-defaults
             (org-babel-parse-header-arguments block-defaults-str t))))
 

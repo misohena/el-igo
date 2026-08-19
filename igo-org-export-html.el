@@ -144,7 +144,7 @@ Modify all igo special blocks in the DATA tree."
 
 (defun igo-org-add-to-html-head-extra (info header-html)
   (if (and (stringp header-html) (not (string= header-html "")))
-      (if-let ((head-extra (plist-get info :html-head-extra)))
+      (if-let* ((head-extra (plist-get info :html-head-extra)))
           (plist-put info :html-head-extra
                      (concat head-extra "\n" header-html))
         ;; Add :html-head-extra property to last of INFO
@@ -363,7 +363,7 @@ Modify all igo special blocks in the DATA tree."
           (if (or (not (igo-org-opt-bool-value :editable options "t"))
                   (igo-org-opt-bool-value :read-only options))
               "\"editable\": false,")
-          (if-let ((path (igo-org-opt-value :path options)))
+          (if-let* ((path (igo-org-opt-value :path options)))
               (concat
                "\"path\": ["
                (mapconcat
@@ -378,7 +378,7 @@ Modify all igo special blocks in the DATA tree."
     (if (string= json "") "" (concat "{" (substring json 0 -1) "}"))))
 
 (defun igo-org-create-svg-from-special-block (special-block info)
-  (when-let ((sgf (igo-org-get-special-block-text special-block info)))
+  (when-let* ((sgf (igo-org-get-special-block-text special-block info)))
     (let* ((sgf-tree (with-temp-buffer
                        (insert sgf)
                        (goto-char (point-min))
@@ -394,7 +394,7 @@ Modify all igo special blocks in the DATA tree."
                             (igo-board-view-pixel-h board-view))))
 
       ;; path
-      (if-let ((queries (igo-org-opt-split-path (igo-org-opt-value :path options))))
+      (if-let* ((queries (igo-org-opt-split-path (igo-org-opt-value :path options))))
           (igo-game-redo-by-queries game queries))
 
       ;;@todo support status bar?

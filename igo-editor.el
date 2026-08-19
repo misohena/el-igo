@@ -149,10 +149,10 @@
 (defun igo-editor-copied-node (editor) (aref editor 12))
 
 (defun igo-editor-board-view (editor);;for compatibility
-  (if-let ((layout (igo-editor-layout editor)))
+  (if-let* ((layout (igo-editor-layout editor)))
       (igo-editor-layout-board-view layout)))
 (defun igo-editor-image-scale (editor);;for compatibility
-  (if-let ((layout (igo-editor-layout editor)))
+  (if-let* ((layout (igo-editor-layout editor)))
       (igo-editor-layout-image-scale layout)
     1.0))
 
@@ -1077,7 +1077,7 @@
 
 (defun igo-editor-create-svg-text (editor layout)
   "Return the SVG text that represents the current board."
-  (if-let ((game (igo-editor-game editor)))
+  (if-let* ((game (igo-editor-game editor)))
       (let ((svg (igo-editor-create-svg
                   (igo-editor-layout-image-w layout)
                   (igo-editor-layout-image-h layout)
@@ -1120,8 +1120,8 @@
                                       "File name(If empty, display temporary buffer): " nil
                                       ""))))
 
-    (if-let ((editor (or editor (igo-editor-at-input)))
-             (game (igo-editor-game editor)))
+    (if-let* ((editor (or editor (igo-editor-at-input)))
+              (game (igo-editor-game editor)))
         (let* ((svg-text (igo-editor-create-svg-text editor layout))
                (output-text
                 (with-temp-buffer
@@ -1252,7 +1252,7 @@
   (if (null editor) (setq editor (igo-editor-at-input)))
 
   (if editor
-      (if-let ((game (igo-editor-game editor)))
+      (if-let* ((game (igo-editor-game editor)))
           (when (igo-node-next-node-default (igo-game-current-node game))
             (igo-game-redo game) ;;The only one node or last visited node
             (while (= (length (igo-node-next-nodes
@@ -1267,7 +1267,7 @@
   (interactive)
   (if (null editor) (setq editor (igo-editor-at-input)))
   (if editor
-      (if-let ((game (igo-editor-game editor)))
+      (if-let* ((game (igo-editor-game editor)))
           (when (not (igo-node-root-p (igo-game-current-node game)))
             (igo-game-undo game)
             (while (and (not (igo-node-root-p (igo-game-current-node game)))
@@ -1658,8 +1658,8 @@ turn(igo-game-turn) if illegal move is allowed."
    (let ((editor (igo-editor-at-input)))
      (list editor (igo-editor-read-pos editor))))
 
-  (when-let ((editor (or editor (igo-editor-at-input)))
-             (game (igo-editor-game editor)))
+  (when-let* ((editor (or editor (igo-editor-at-input)))
+              (game (igo-editor-game editor)))
     (let ((color (igo-editor-next-move-color editor)))
       ;; insert text to buffer
       ;; (if (igo-game-legal-move-p game pos)
@@ -1706,8 +1706,8 @@ turn(igo-game-turn) if illegal move is allowed."
 (defun igo-editor-pass (&optional editor)
   (interactive)
 
-  (when-let ((editor (or editor (igo-editor-at-input)))
-             (game (igo-editor-game editor)))
+  (when-let* ((editor (or editor (igo-editor-at-input)))
+              (game (igo-editor-game editor)))
     (let ((color (igo-editor-next-move-color editor)))
       (if (or (igo-editor-editable-p editor t)
               (igo-node-find-next-by-move (igo-game-current-node game)
@@ -2134,7 +2134,7 @@ turn(igo-game-turn) if illegal move is allowed."
   (interactive)
   (if (null editor) (setq editor (igo-editor-at-input)))
 
-  (if-let ((curr-node (igo-editor-current-node editor)))
+  (if-let* ((curr-node (igo-editor-current-node editor)))
       (if (igo-editor-editable-p editor)
           ;; editable
           (let* ((old-mn (igo-node-get-move-number-property curr-node))
@@ -2176,7 +2176,7 @@ turn(igo-game-turn) if illegal move is allowed."
   (if (null editor) (setq editor (igo-editor-at-input)))
   (if editor
       (when (igo-editor-editable-p editor t)
-        (when-let ((game (igo-editor-game editor)))
+        (when-let* ((game (igo-editor-game editor)))
           (if (igo-node-root-p (igo-game-current-node game))
               (error "Already root node."))
           (igo-game-make-current-node-root game)
@@ -2208,7 +2208,7 @@ turn(igo-game-turn) if illegal move is allowed."
   (if (null editor) (setq editor (igo-editor-at-input)))
 
   (when (igo-editor-editable-p editor t)
-    (when-let ((root-node (igo-editor-root-node editor)))
+    (when-let* ((root-node (igo-editor-root-node editor)))
       (switch-to-buffer igo-editor-game-info-buffer-name)
       (kill-all-local-variables)
       (let ((inhibit-read-only t))
@@ -2304,20 +2304,20 @@ turn(igo-game-turn) if illegal move is allowed."
 
 (defun igo-editor-copy-current-node (&optional editor)
   (interactive)
-  (when-let ((editor (or editor (igo-editor-at-input)))
-             (game (igo-editor-game editor)))
+  (when-let* ((editor (or editor (igo-editor-at-input)))
+              (game (igo-editor-game editor)))
     (igo-editor-copy-tree editor (igo-game-current-node game))))
 
 (defun igo-editor-cut-current-node (&optional editor)
   (interactive)
-  (when-let ((editor (or editor (igo-editor-at-input)))
-             (game (igo-editor-game editor)))
+  (when-let* ((editor (or editor (igo-editor-at-input)))
+              (game (igo-editor-game editor)))
     (igo-editor-cut-tree editor (igo-game-current-node game))))
 
 (defun igo-editor-paste-current-node (&optional editor)
   (interactive)
-  (when-let ((editor (or editor (igo-editor-at-input)))
-             (game (igo-editor-game editor)))
+  (when-let* ((editor (or editor (igo-editor-at-input)))
+              (game (igo-editor-game editor)))
     (igo-editor-paste-tree editor (igo-game-current-node game))))
 
 (defun igo-editor-copy-tree (editor node)
@@ -2328,7 +2328,7 @@ turn(igo-game-turn) if illegal move is allowed."
 
 (defun igo-editor-paste-tree (editor target-node)
   (if (and editor (igo-editor-editable-p editor t) target-node)
-      (when-let ((copied-node (igo-editor-copied-node editor)))
+      (when-let* ((copied-node (igo-editor-copied-node editor)))
         (when (igo-node-move-p copied-node)
           ;; Cannot paste an existing move
           (if (igo-node-find-next-by-move target-node
